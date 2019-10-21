@@ -1,0 +1,22 @@
+começar por:
+
+> Destruir paredes
+
+ao começo do jogo começamos em (1,1) e temos no objeto state uma lista das paredes destruiveis.
+
+Como tamos no 1,1 a 1ª lista da parede é a mais perto (SPOILER: dps precisamos de ordenar a lista das paredes)
+
+
+(X, Y) -> Posição da parede, temos de nos aproximar da parede (ao lado, para começar neste momento, pq no futuro pode destruir a distancia)
+
+ele pode ir para cima, baixo, direita, esquerda ou direita, escolher qual dos lados da parede a destruir é oq ta mais perto. 
+Distancia: math.hyphot (hipotenusa)
+
+depois de decidir, determinar o caminho para la. 
+    podemos usar o codigo do caminho para la das cidades, cada quadrado é uma cidade e temos as varias transiçoes q podemos ter: para baixo, para a direita, etc, temos de gerar uma sequencia de passos ate a parede, Geramos assim um submapa, com a nossa posição e ate a posiçao ao lado da parede. se n encontrarmos temos de aumentar o submapa, pesquisa em profundidade (ou largura). Ele vai tomar um conjunto de açoes "carregar para baixo, para a direita, direita, etc etc" cria uma lista de teclas a carregar, como de cidades a visitar. depois temos de consumir no ciclo principal esta lista de teclas a carregar.
+
+1º fazemos contas, geramos lista dos passos. 2º depois de nao termos passos, temos de fugir da bomba.
+main cycle faz contas, depois consome, depois contas, depois consome, etc etc
+
+pos isto é procurar um safe spot e como saber ir para la
+
