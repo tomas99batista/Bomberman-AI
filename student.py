@@ -1,183 +1,124 @@
-import sys
-import json
-import asyncio
-import websockets
-import getpass
-import os
-import math
-
+import sys, json, asyncio, websockets, getpass, os, math    
 from mapa import Map
+from tree_search import *
 
-
-# Next 2 lines are not needed for AI agent
-import pygame
-
-pygame.init()
-on_hold_commands = []
-destroyed_walls = []
-'''
-    IMPORTANT:  y is odd  -----------------> area is free
-                y is even --> x is odd  ---> area is free
-                              y is even ---> area is ocuppied 
-'''
-def is_even(x):
-    if ((x % 2) == 0):
-        return True
-    else:
-        return False
-
-def commands(state,free_box):
-    print(free_box)
-    x_1, y_1 = free_box
-    x_2, y_2 = state
-    if x_2 > x_1:
-        if not is_even(x_2):
-            n = (x_1 - x_2)
-            while n >= 1:
-                on_hold_commands.append("a")
-                n = n - 1
-        else:
-            on_hold_commands.append("d")
-            x_2 = x_2 + 1
-            new_state = x_2,y_2
-            commands(new_state,free_box)
-    elif x_2 < x_1:
-        if not is_even(x_2):
-            n = (x_1 - x_2)
-            while n >= 1:
-                on_hold_commands.append("d")
-                n = n - 1
-        else:
-            on_hold_commands.append("d")
-            x_2 = x_2 + 1
-            new_state = x_2,y_2
-            commands(new_state,free_box)
-    elif y_2 > y_1:
-        if not is_even(y_2):
-            n = (y_1 - y_2)
-            while n >= 1:
-                on_hold_commands.append("w")
-                n = n - 1
-        else:
-            on_hold_commands.append("s")
-            y_2 = y_2 + 1
-            new_state = x_2,y_2
-            commands(new_state,free_box)
-    elif y_2 < y_1:
-        if not is_even(y_2):
-            n = (y_1 - y_2)
-            while n >= 1:
-                on_hold_commands.append("s")
-                n = n - 1
-        else:
-            on_hold_commands.append("s")
-            y_2 = y_2 + 1
-            new_state = x_2,y_2
-            commands(new_state,free_box)
-
-    if not is_even(x_2):
-       
-        if not is_even(x_1):
-            n = (x_1 - x_2)
-            while n >= 1:
-                on_hold_commands.append("s")
-                n = n - 1
-
-def get_box(closest_wall):
-    x,y = closest_wall
-    if not is_even(x):
-        y = y - 1
-        wall = x,y
-    else:
-        x = x + 1
-        wall = x,y
-    return wall
-
-
-def search_for_walls(state):
-    d = 1000
+def search_for_wall (actual_pos, walls):
+    act_x, act_y = actual_pos
+    #print(f'Actual pos (x,y): {act_x}, {act_y}')
+    #print(f'Walls {walls}')
+    min_hyp = sys.maxsize
+    best_wall = []
+    for wall in walls:
+        wall_x, wall_y = wall
+        hyp = math.hypot(act_x - wall_x, act_y - wall_y)
+        if hyp < min_hyp:
+            min_hyp = hyp
+            best_wall[:] = wall
+    i = walls.index(best_wall)
+    del walls[i]
+    return best_wall
     
-    closest_wall = [0]
-    for wall in state["walls"]:
-        x,y = wall
-        new_d = math.sqrt(math.pow(x, 2) + math.pow(y, 2))
-        if new_d < d and wall:
-            if wall in destroyed_walls:
-                pass
-            else:
-                del closest_wall[:]
-                closest_wall.append(wall)
-                d = new_d
-    #print(d)
-    print(closest_wall[0])
-    wall = closest_wall[0]
-    print("WALL TO DESTROY: ",format(closest_wall[0]))
-    return wall
+def best_spot_wall (mapa, wall, actual_position):
+    x_wall, y_wall = wall
+    x_pos, y_pos = actual_position
+    # This will check if the walls are not on the limit of the map
+    # and if they do not have any other wall arround it
+    # ATTENTION: This will give false if there is a monster in the spot
+    up = True if y_wall + 1 != 0 and not Map.is_blocked(mapa, [x_wall, y_wall + 1]) else False
+    down = True if y_wall - 1 != 0 and not Map.is_blocked(mapa, [x_wall, y_wall-1]) else False
+    left = True if x_wall - 1 != 0 and not Map.is_blocked(mapa, [x_wall - 1, y_wall]) else False
+    right = True if x_wall + 1 != 0 and not Map.is_blocked(mapa, [x_wall + 1, y_wall]) else False
+    print(f'UP: {up}, DOWN: {down}, LEFT: {left}, RIGHT: {right}.')
+    min_hypot = sys.maxsize
+    bomb_spot = ""  # The spot where the bomb will be placed
+    bomb_spot_coords = [[0,0]]  # The coordinates where the bomb will be placed
+    
+    # If the spot above the wall it's free
+    if up:
+        hyp = math.hypot(x_pos - x_wall, y_pos - y_wall + 1)
+        if hyp < min_hypot:
+            min_hypot = hyp
+            bomb_spot_coords[0] = [x_wall, y_wall+1] 
+            bomb_spot = "UP"
+        print(f'UP, Hyp: {hyp}')
+    
+    # If the spot under the wall it's free    
+    if down:
+        hyp = math.hypot(x_pos - x_wall, y_pos - y_wall - 1)
+        if hyp < min_hypot:
+            min_hypot = hyp
+            bomb_spot_coords[0] = [x_wall, y_wall - 1] 
+            bomb_spot = "DOWN"
+        print(f'DOWN, Hyp: {hyp}')
+    
+    # If the spot on the left of the wall it's free
+    if left:
+        hyp = math.hypot(x_pos - x_wall - 1, y_pos - y_wall)
+        if hyp < min_hypot:
+            min_hypot = hyp
+            bomb_spot_coords[0] = [x_wall - 1, y_wall] 
+            bomb_spot = "LEFT"
+        print(f'LEFT, Hyp: {hyp}')
+
+    # If the spot on the right of the wall it's free
+    if right:
+        hyp = math.hypot(x_pos - x_wall + 1, y_pos - y_wall + 1)
+        if hyp < min_hypot:
+            min_hypot = hyp
+            bomb_spot_coords[0] = [x_wall + 1, y_wall] 
+            bomb_spot = "RIGHT"
+        print(f'RIGHT, Hyp: {hyp}')
+    print(f'Bomb_Spot: {bomb_spot}, Bomb_Spot_Coordinates: {bomb_spot_coords}, Hyp: {min_hypot}')
+    return bomb_spot_coords
+    
+def place_bomb_spot (actual_pos, bomb_spot):
+    pos_x, pos_y = actual_pos
+    bomb_x, bomb_y = bomb_spot
+    print(f'Ok, got here, now I need to find best path')
+    print(f'Next implementation: Tree Search')
 
 async def agent_loop(server_address="localhost:8000", agent_name="student"):
     async with websockets.connect(f"ws://{server_address}/player") as websocket:
-
         # Receive information about static game properties
         await websocket.send(json.dumps({"cmd": "join", "name": agent_name}))
         msg = await websocket.recv()
         game_properties = json.loads(msg)
-
         # You can create your own map representation or use the game representation:
         mapa = Map(size=game_properties["size"], mapa=game_properties["map"])
 
-        # Next 3 lines are not needed for AI agent
-        SCREEN = pygame.display.set_mode((299, 123))
-        SPRITES = pygame.image.load("data/pad.png").convert_alpha()
-        SCREEN.blit(SPRITES, (0, 0))
-
-
         while True:
             try:
-                state = json.loads(  
+                state = json.loads(
                     await websocket.recv()
                 )  # receive game state, this must be called timely or your game will get out of sync with the server
-
-                # Next lines are only for the Human Agent, the key values are nonetheless the correct ones!
-                #key = "d"
+                actual_position = state['bomberman']
+                walls = state['walls']
+                powerups = state['powerups']
+                bonus = state['bonus']
+                exit = state['exit']
+                print(f'State: {state}')
+                print(f'Actual Pos: {actual_position}')
+                print(f'Walls: {walls}')
+                print(f'Powerups: {powerups}')
+                print(f'Bonus: {bonus}')
+                print(f'Exit: {exit}')
+                best_wall = search_for_wall(actual_position, walls)
+                print(f'-- Wall to destroy: {best_wall}')
+                bomb_spot_coords = best_spot_wall(mapa, best_wall, actual_position)
+                print(f'-- Best place to put bomb: {bomb_spot_coords}')
+                place_bomb_spot(actual_position, bomb_spot_coords[0])
                 
-                print('State: ', format(state["bomberman"]))
-
-                print('Walls: ', format(state["walls"]))
-                wall = search_for_walls(state)
-                box = get_box(wall)
-                print("Free Box : ", format(box))
-                if not on_hold_commands:
-                    commands(state["bomberman"],box)
-
-                x,y = state["bomberman"]
                 
-                if on_hold_commands:
-                    print(on_hold_commands)
-                    key = on_hold_commands[0]
-
-                
-                if not on_hold_commands:
-                    print("BOOM")
-                    key = "B"
-                    destroyed_walls.append(wall)
-
-
                 await websocket.send(
                     json.dumps({"cmd": "key", "key": key})
                 )  # send key command to server - you must implement this send in the AI agent
-                #break
-                
-                if on_hold_commands:
-                    on_hold_commands.pop(0)
-                
-                        
-                       
-                        
+                break
             except websockets.exceptions.ConnectionClosedOK:
                 print("Server has cleanly disconnected us")
                 return
 
-            
+            # Next line is not needed for AI agent
+            pygame.display.flip()
 
 # DO NOT CHANGE THE LINES BELLOW
 # You can change the default values using the command line, example:
