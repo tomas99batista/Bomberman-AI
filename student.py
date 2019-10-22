@@ -18,7 +18,7 @@ destroyed_walls = []
 '''
     IMPORTANT:  y is odd  -----------------> area is free
                 y is even --> x is odd  ---> area is free
-                              y is even ---> area is ocuppied 
+                              x is even ---> area is ocuppied 
 '''
 def is_even(x):
     if ((x % 2) == 0):
@@ -30,7 +30,9 @@ def commands(state,free_box):
     print(free_box)
     x_1, y_1 = free_box
     x_2, y_2 = state
+    #Se estás mais abaixo da free box
     if x_2 > x_1:
+        print("TEM QUE SUBIR")
         if not is_even(x_2):
             n = (x_1 - x_2)
             while n >= 1:
@@ -41,9 +43,12 @@ def commands(state,free_box):
             x_2 = x_2 + 1
             new_state = x_2,y_2
             commands(new_state,free_box)
+    #Se estás mais acima
     elif x_2 < x_1:
+        print("TEM QUE DESCER")
         if not is_even(x_2):
             n = (x_1 - x_2)
+            print("N :",format(n))
             while n >= 1:
                 on_hold_commands.append("d")
                 n = n - 1
@@ -52,7 +57,9 @@ def commands(state,free_box):
             x_2 = x_2 + 1
             new_state = x_2,y_2
             commands(new_state,free_box)
+    #Se estás mais para a direita
     elif y_2 > y_1:
+        print("TEM QUE IR PARA A ESQUERDA")
         if not is_even(y_2):
             n = (y_1 - y_2)
             while n >= 1:
@@ -63,7 +70,9 @@ def commands(state,free_box):
             y_2 = y_2 + 1
             new_state = x_2,y_2
             commands(new_state,free_box)
+    #Se estás mais para a esquerda
     elif y_2 < y_1:
+        print("TEM QUE IR PARA A DIREITA")
         if not is_even(y_2):
             n = (y_1 - y_2)
             while n >= 1:
@@ -96,11 +105,11 @@ def get_box(closest_wall):
 
 def search_for_walls(state):
     d = 1000
-    
+    x_1,  y_1 = state["bomberman"]
     closest_wall = [0]
     for wall in state["walls"]:
         x,y = wall
-        new_d = math.sqrt(math.pow(x, 2) + math.pow(y, 2))
+        new_d = math.sqrt(math.pow((x-x_1), 2) + math.pow((y-y_1), 2))
         if new_d < d and wall:
             if wall in destroyed_walls:
                 pass
@@ -142,12 +151,15 @@ async def agent_loop(server_address="localhost:8000", agent_name="student"):
                 
                 print('State: ', format(state["bomberman"]))
 
-                print('Walls: ', format(state["walls"]))
+                #print('Walls: ', format(state["walls"]))
                 wall = search_for_walls(state)
                 box = get_box(wall)
                 print("Free Box : ", format(box))
                 if not on_hold_commands:
                     commands(state["bomberman"],box)
+                    on_hold_commands.append("B")
+                    destroyed_walls.append(wall)
+
 
                 x,y = state["bomberman"]
                 
@@ -156,10 +168,8 @@ async def agent_loop(server_address="localhost:8000", agent_name="student"):
                     key = on_hold_commands[0]
 
                 
-                if not on_hold_commands:
-                    print("BOOM")
-                    key = "B"
-                    destroyed_walls.append(wall)
+                if on_hold_commands[0] == "B":
+                    print("BOOM")                
 
 
                 await websocket.send(
