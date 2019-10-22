@@ -29,12 +29,54 @@ def is_even(x):
 def commands(state,free_box):
     print(free_box)
     x_1, y_1 = free_box
-    x_2, y_2 = state["bomberman"]
-    if not is_even(x_2):
-        n = (x_1 - x_2)
-        while n >= 1:
+    x_2, y_2 = state
+    if x_2 > x_1:
+        if not is_even(x_2):
+            n = (x_1 - x_2)
+            while n >= 1:
+                on_hold_commands.append("a")
+                n = n - 1
+        else:
             on_hold_commands.append("d")
-            n = n - 1
+            x_2 = x_2 + 1
+            new_state = x_2,y_2
+            commands(new_state,free_box)
+    elif x_2 < x_1:
+        if not is_even(x_2):
+            n = (x_1 - x_2)
+            while n >= 1:
+                on_hold_commands.append("d")
+                n = n - 1
+        else:
+            on_hold_commands.append("d")
+            x_2 = x_2 + 1
+            new_state = x_2,y_2
+            commands(new_state,free_box)
+    elif y_2 > y_1:
+        if not is_even(y_2):
+            n = (y_1 - y_2)
+            while n >= 1:
+                on_hold_commands.append("w")
+                n = n - 1
+        else:
+            on_hold_commands.append("s")
+            y_2 = y_2 + 1
+            new_state = x_2,y_2
+            commands(new_state,free_box)
+    elif y_2 < y_1:
+        if not is_even(y_2):
+            n = (y_1 - y_2)
+            while n >= 1:
+                on_hold_commands.append("s")
+                n = n - 1
+        else:
+            on_hold_commands.append("s")
+            y_2 = y_2 + 1
+            new_state = x_2,y_2
+            commands(new_state,free_box)
+
+    if not is_even(x_2):
+       
         if not is_even(x_1):
             n = (x_1 - x_2)
             while n >= 1:
@@ -104,15 +146,17 @@ async def agent_loop(server_address="localhost:8000", agent_name="student"):
                 wall = search_for_walls(state)
                 box = get_box(wall)
                 print("Free Box : ", format(box))
-                commands(state,box)
+                if not on_hold_commands:
+                    commands(state["bomberman"],box)
 
                 x,y = state["bomberman"]
                 
                 if on_hold_commands:
                     print(on_hold_commands)
                     key = on_hold_commands[0]
-                    on_hold_commands.pop(0)
-                else:
+
+                
+                if not on_hold_commands:
                     print("BOOM")
                     key = "B"
                     destroyed_walls.append(wall)
@@ -123,7 +167,9 @@ async def agent_loop(server_address="localhost:8000", agent_name="student"):
                 )  # send key command to server - you must implement this send in the AI agent
                 #break
                 
-                                            
+                if on_hold_commands:
+                    on_hold_commands.pop(0)
+                
                         
                        
                         
