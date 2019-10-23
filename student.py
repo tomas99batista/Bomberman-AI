@@ -26,25 +26,41 @@ def is_even(x):
     else:
         return False
 
-def commands(state,free_box):
+def commands(state,walls,free_box):
     print(free_box)
     x_1, y_1 = free_box
     x_2, y_2 = state
     #Se estás mais abaixo da free box
+    a = [x_2+1,y_2+1]
+    b = [x_2-1,y_2+1]
+    c = [x_2+1,y_2-1]
+    d = [x_2-1,y_2-1]
+    
+    if ( a or b or c or d) in walls:
+        print("RECUAAAAR")
+        on_hold_commands.append("a")
+        on_hold_commands.append("a")
+
+    '''
+    elif not is_even(a[0]) or not is_even(b[0]) or not is_even(c[0]) or not is_even(d[0]):
+        print("RECUAAAAR")
+        on_hold_commands.append("a")
+        on_hold_commands.append("a")        
+        '''
     if x_2 > x_1:
         print("TEM QUE SUBIR")
         if not is_even(x_2):
             n = (x_1 - x_2)
             while n >= 1:
-                on_hold_commands.append("a")
+                on_hold_commands.append("w")
                 n = n - 1
         else:
             on_hold_commands.append("d")
             x_2 = x_2 + 1
             new_state = x_2,y_2
-            commands(new_state,free_box)
+            commands(new_state,walls,free_box)
     #Se estás mais acima
-    elif x_2 < x_1:
+    if x_2 < x_1:
         print("TEM QUE DESCER")
         if not is_even(x_2):
             n = (x_1 - x_2)
@@ -56,9 +72,9 @@ def commands(state,free_box):
             on_hold_commands.append("d")
             x_2 = x_2 + 1
             new_state = x_2,y_2
-            commands(new_state,free_box)
+            commands(new_state,walls,free_box)
     #Se estás mais para a direita
-    elif y_2 > y_1:
+    if y_2 > y_1:
         print("TEM QUE IR PARA A ESQUERDA")
         if not is_even(y_2):
             n = (y_1 - y_2)
@@ -69,9 +85,9 @@ def commands(state,free_box):
             on_hold_commands.append("s")
             y_2 = y_2 + 1
             new_state = x_2,y_2
-            commands(new_state,free_box)
+            commands(new_state,walls,free_box)
     #Se estás mais para a esquerda
-    elif y_2 < y_1:
+    if y_2 < y_1:
         print("TEM QUE IR PARA A DIREITA")
         if not is_even(y_2):
             n = (y_1 - y_2)
@@ -82,8 +98,13 @@ def commands(state,free_box):
             on_hold_commands.append("s")
             y_2 = y_2 + 1
             new_state = x_2,y_2
-            commands(new_state,free_box)
-
+            commands(new_state,walls,free_box)
+    
+    if is_even(x_2 + 1)  and is_even(y_2):
+        on_hold_commands.append("w")
+        on_hold_commands.append("w")
+        on_hold_commands.append("w")
+    
     if not is_even(x_2):
        
         if not is_even(x_1):
@@ -91,6 +112,7 @@ def commands(state,free_box):
             while n >= 1:
                 on_hold_commands.append("s")
                 n = n - 1
+
 
 def get_box(closest_wall):
     x,y = closest_wall
@@ -156,15 +178,18 @@ async def agent_loop(server_address="localhost:8000", agent_name="student"):
                 box = get_box(wall)
                 print("Free Box : ", format(box))
                 if not on_hold_commands:
-                    commands(state["bomberman"],box)
+                    commands(state["bomberman"],state["walls"],box)
                     on_hold_commands.append("B")
                     destroyed_walls.append(wall)
+                    x,y = wall
+                    new_wall = x+1,y+1
+                    commands(state["bomberman"],state["walls"],new_wall)
 
 
                 x,y = state["bomberman"]
                 
                 if on_hold_commands:
-                    print(on_hold_commands)
+                    #print(on_hold_commands)
                     key = on_hold_commands[0]
 
                 
