@@ -1,4 +1,4 @@
-import sys, json, asyncio, websockets, getpass, os, math    
+import sys, json, asyncio, websockets, getpass, os, math, logging  
 from mapa import Map
 from tree_search import *
 
@@ -7,10 +7,15 @@ Author: tomas & flavia
 
 Copyright (c) 2019 Tomas Batista & Flavia Figueiredo
 '''
+logger = logging.getLogger('Bomberman')
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                    datefmt='%m-%d %H:%M:%S')
 
 # Class Agent
 class Agent:
     def __init__(self, mapa):
+        self.logger = logging.getLogger('Bomberman: ')
         self.mapa = mapa
         self.state = None
         self.actual_pos = None
@@ -20,40 +25,47 @@ class Agent:
         self.exit = None
         self.enemies = None
         self.level = 1      
-        self.exit = None  
+        self.exit = None
+        # Commands to execute
+        self.commands = ['s', 'd']  
 
     # Update agent in each iteration
     def update_agent(self, state):
         self.state = state
         self.actual_pos = state['bomberman']
+        # x, y da actual_pos
+        self.x, self.y = self.actual_pos
         self.walls = state['walls']
         self.enemies = state['enemies']
         self.powerups = state['powerups']
         self.bonus = state['bonus']
         self.exit = state['exit']
         self.level = state['level']
-        print(f'-> State: {self.state}')
-        print(f'-> Actual_Pos: {self.actual_pos}')
-        print(f'-> Walls: {self.walls}')
-        print(f'-> Enemies: {self.enemies}')
-        print(f'-> Powerups: {self.powerups}')
-        print(f'-> Bonus: {self.bonus}')
-        print(f'-> Exit: {self.exit}')
+        #self.logger.debug(f'-> State: {self.state}')
+        self.logger.info(f'-> Actual_Pos: {self.actual_pos}')
+        self.logger.info(f'-> Walls: {self.walls}')
+        self.logger.info(f'-> Enemies: {self.enemies}')
+        self.logger.info(f'-> Powerups: {self.powerups}')
+        self.logger.info(f'-> Bonus: {self.bonus}')
+        self.logger.info(f'-> Exit: {self.exit}')
+
     
     # Move function
     def move(self, strategy):
         # Defend
         if strategy == 'def':
-            pass
+            # usar aqui list comprehension das walls com lambda functions para key = hipotenusa
+            closest_wall = self.closest_object(self.walls)
         # Attack
         if strategy == 'att':
-            pass
+            # usar a mm list comprehension c/ lambda functions, ter atençao q enemies é um dict
+            closest_enemy = self.closest_object(self.enemies)
 
     # Search for the closest wall/enemy
     def closest_object(self, obj):
         act_x, act_y = self.actual_pos
-        #print(f'Actual pos (x,y): {act_x}, {act_y}')
-        #print(f'Walls {walls}')
+        #self.logger.info(f'Actual pos (x,y): {act_x}, {act_y}')
+        #self.logger.info(f'Walls {walls}')
         min_hyp = sys.maxsize
         best_wall = []
         for wall in obj:
@@ -86,7 +98,7 @@ class Agent:
                 min_hypot = hyp
                 bomb_spot_coords[0] = [x_wall, y_wall+1] 
                 bomb_spot = "UP"
-            #print(f'UP, Hyp: {hyp}')
+            #self.logger.info(f'UP, Hyp: {hyp}')
         
         # If the spot under the wall it's free    
         down = True if y_wall - 1 != 0 and not Map.is_blocked(self.mapa, [x_wall, y_wall-1]) else False
@@ -96,7 +108,7 @@ class Agent:
                 min_hypot = hyp
                 bomb_spot_coords[0] = [x_wall, y_wall - 1] 
                 bomb_spot = "DOWN"
-            #print(f'DOWN, Hyp: {hyp}')
+            #self.logger.info(f'DOWN, Hyp: {hyp}')
         
         # If the spot on the left of the wall it's free
         left = True if x_wall - 1 != 0 and not Map.is_blocked(self.mapa, [x_wall - 1, y_wall]) else False
@@ -106,7 +118,7 @@ class Agent:
                 min_hypot = hyp
                 bomb_spot_coords[0] = [x_wall - 1, y_wall] 
                 bomb_spot = "LEFT"
-            #print(f'LEFT, Hyp: {hyp}')
+            #self.logger.info(f'LEFT, Hyp: {hyp}')
         
         # If the spot on the right of the wall it's free
         right = True if x_wall + 1 != 0 and not Map.is_blocked(self.mapa, [x_wall + 1, y_wall]) else False
@@ -116,10 +128,10 @@ class Agent:
                 min_hypot = hyp
                 bomb_spot_coords[0] = [x_wall + 1, y_wall] 
                 bomb_spot = "RIGHT"
-            #print(f'RIGHT, Hyp: {hyp}')       
+            #self.logger.info(f'RIGHT, Hyp: {hyp}')       
        
-        #print(f'UP: {up}, DOWN: {down}, LEFT: {left}, RIGHT: {right}.')
-        print(f'Bomb_Spot: {bomb_spot}, Bomb_Spot_Coordinates: {bomb_spot_coords}, Hyp: {min_hypot}')
+        #self.logger.info(f'UP: {up}, DOWN: {down}, LEFT: {left}, RIGHT: {right}.')
+        self.logger.info(f'Bomb_Spot: {bomb_spot}, Bomb_Spot_Coordinates: {bomb_spot_coords}, Hyp: {min_hypot}')
         return bomb_spot_coords
 
     # Place the bomb on the spot
@@ -154,22 +166,12 @@ async def agent_loop(server_address="localhost:8000", agent_name="student"):
                 # Se ele ainda tiver as 3 vidas e muitos inimigos
                 # agent.move('att')
                 celula = Celulas(mapa)
-
                 
-                # # Search for objects: Wall or Enemy
-                # closest_obj = search_for_object(actual_position, walls) # or (... , enemy)
-                # print(f'-- Object to destroy: {closest_obj}')
-
-                # # Best spot of the wall to attack (up, down, left or right)
-                # bomb_spot_coords = best_spot_wall(mapa, closest_obj, actual_position)
-                # print(f'-- Best place to put bomb: {bomb_spot_coords}')
-                # place_bomb_spot(celula, actual_position, bomb_spot_coords[0])
-
-                #key = "abc"
-                await websocket.send(
-                    json.dumps({"cmd": "key", "key": key})
-                )  # send key command to server - you must implement this send in the AI agent
-                break
+                for key in agent.commands:
+                    await websocket.send(
+                        json.dumps({"cmd": "key", "key": key})
+                    )  # send key command to server - you must implement this send in the AI agent
+                    break
             except websockets.exceptions.ConnectionClosedOK:
                 print("Server has cleanly disconnected us")
                 return
