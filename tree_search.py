@@ -104,7 +104,7 @@ class SearchTree:
         return(path)
 
     # procurar a solucao
-    def search(self, limit):    
+    def search(self, limite = None):    
         while self.open_nodes != []:
             node = self.open_nodes.pop(0)
             self.cost += node.cost
@@ -124,12 +124,12 @@ class SearchTree:
             
             if self.problem.goal_test(node.state):
                 self.ramification = (self.terminal + self.non_terminal -1) / self.non_terminal
-                return self.get_path(node), node.cost
+                return self.get_path(node)
             lnewnodes = []
             for a in self.problem.domain.actions(node.state):
                 newstate = self.problem.domain.result(node.state,a)
                 # N queremos adicionar a lista se eles ja estiverem la
-                if (not node.in_parent(newstate)) and node.depth < limit: 
+                if (not node.in_parent(newstate)): # and node.depth < limite): 
                 # in_parent vai confirmar todos os anteriores a ele // So pesquisa se o depth do node
                     # estiver dentro do limite
                     lnewnodes += [SearchNode(newstate,
@@ -158,5 +158,5 @@ class SearchTree:
             self.open_nodes = sorted(self.open_nodes + lnewnodes, key=lambda no: no.cost)
         elif self.strategy == 'greedy':
             self.open_nodes = sorted(self.open_nodes + lnewnodes, key=lambda no: no.heuristic)
-        elif self.strategy == 'A*':
+        elif self.strategy == 'astar':
             self.open_nodes = sorted(self.open_nodes + lnewnodes, key=lambda no: no.cost + no.heuristic)

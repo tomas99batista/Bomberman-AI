@@ -1,147 +1,138 @@
-import sys, json, asyncio, websockets, getpass, os, math, logging  
+import sys, json, asyncio, websockets, getpass, os, math, logging
 from mapa import Map
 from tree_search import *
 
-'''
+"""
 Author: tomas & flavia
 
 Copyright (c) 2019 Tomas Batista & Flavia Figueiredo
-'''
-logger = logging.getLogger('Bomberman')
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                    datefmt='%m-%d %H:%M:%S')
+"""
+logger = logging.getLogger("Bomberman")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(name)-12s %(levelname)-8s %(message)s",
+    datefmt="%m-%d %H:%M:%S",
+)
 
 # Class Agent
 class Agent:
     def __init__(self, mapa):
-        self.logger = logging.getLogger('Bomberman: ')
+        self.logger = logging.getLogger("Bomberman: ")
         self.mapa = mapa
         self.state = None
-        self.actual_pos = None
+        self.actual_pos = [1, 1]
         self.walls = None
         self.powerups = None
         self.bonus = None
         self.exit = None
         self.enemies = None
-        self.level = 1      
+        self.level = 1
         self.exit = None
+        self.last_pos = None
         # Commands to execute
-        self.commands = ['s', 'd']  
+        self.commands = []
 
     # Update agent in each iteration
     def update_agent(self, state):
         self.state = state
-        self.actual_pos = state['bomberman']
+        self.last_pos = self.actual_pos
+        self.actual_pos = state["bomberman"]
         # x, y da actual_pos
         self.x, self.y = self.actual_pos
-        self.walls = state['walls']
-        self.enemies = state['enemies']
-        self.powerups = state['powerups']
-        self.bonus = state['bonus']
-        self.exit = state['exit']
-        self.level = state['level']
-        #self.logger.debug(f'-> State: {self.state}')
-        self.logger.info(f'-> Actual_Pos: {self.actual_pos}')
-        self.logger.info(f'-> Walls: {self.walls}')
-        self.logger.info(f'-> Enemies: {self.enemies}')
-        self.logger.info(f'-> Powerups: {self.powerups}')
-        self.logger.info(f'-> Bonus: {self.bonus}')
-        self.logger.info(f'-> Exit: {self.exit}')
-
-    
-    # Move function
-    def move(self, strategy):
-        # Defend
-        if strategy == 'def':
-            # usar aqui list comprehension das walls com lambda functions para key = hipotenusa
-            closest_wall = self.closest_object(self.walls)
-        # Attack
-        if strategy == 'att':
-            # usar a mm list comprehension c/ lambda functions, ter atençao q enemies é um dict
-            closest_enemy = self.closest_object(self.enemies)
+        self.walls = state["walls"]
+        self.enemies = state["enemies"]
+        self.powerups = state["powerups"]
+        self.bonus = state["bonus"]
+        self.exit = state["exit"]
+        self.level = state["level"]
+        #self.logger.debug(f"-> State: {self.state}")
+        #self.logger.info(f"- Actual_Pos: {self.actual_pos}")
+        #self.logger.info(f"- Walls: {self.walls}")
+        #self.logger.info(f"- Enemies: {self.enemies}")
+        #self.logger.info(f"- Powerups: {self.powerups}")
+        #self.logger.info(f"- Bonus: {self.bonus}")
+        #self.logger.info(f"- Exit: {self.exit}")
 
     # Search for the closest wall/enemy
-    def closest_object(self, obj):
-        act_x, act_y = self.actual_pos
-        #self.logger.info(f'Actual pos (x,y): {act_x}, {act_y}')
-        #self.logger.info(f'Walls {walls}')
-        min_hyp = sys.maxsize
-        best_wall = []
-        for wall in obj:
-            wall_x, wall_y = wall
-            hyp = math.hypot(act_x - wall_x, act_y - wall_y)
-            if hyp < min_hyp:
-                min_hyp = hyp
-                best_wall[:] = wall
-        i = obj.index(best_wall)
-        del obj[i]
-        return best_wall
+    def place_bomb_wall(self):
+        min_hypot = sys.maxsize
+        best_spot = (0,0)        
+        # This lambda-function-list-comprehension-super-pythonic way will give the best_wall (the nearest) to put a bomb
+        wall = min([(wall[0], wall[1]) for wall in self.walls], key=lambda wall: math.hypot(self.actual_pos[0] - wall[0], self.actual_pos[1] - wall[1]))
+        # Now, for that wall, look for the closes spot near the wall [top, down, left, right]
+        # If the spot UP the wall it's free
+        up =    True if wall[1] + 1 != 0 and not Map.is_blocked(self.mapa, [wall[0]     , wall[1] - 1]) else False
+        # If the spot DOWN the wall it's free
+        down =  True if wall[1] - 1 != 0 and not Map.is_blocked(self.mapa, [wall[0]     , wall[1] + 1]) else False
+        # If the spot LEFT of the wall it's free
+        left =  True if wall[0] - 1 != 0 and not Map.is_blocked(self.mapa, [wall[0] - 1 , wall[1]])     else False
+        # If the spot RIGHT of the wall it's free
+        right = True if wall[0] + 1 != 0 and not Map.is_blocked(self.mapa, [wall[0] + 1 , wall[1]])     else False
+        # If UP has the lowest hyp
+        up_hyp = math.hypot(self.actual_pos[0] - wall[0], self.actual_pos[1] - (wall[1] - 1))
+        if up and up_hyp < min_hypot:
+            min_hypot = up_hyp
+            best_spot = (wall[0], wall[1] - 1)
+        # If DOWN has the lowest hyp
+        down_hyp = math.hypot(self.actual_pos[0] - wall[0], self.actual_pos[1] - (wall[1] + 1))
+        if down and down_hyp < min_hypot:
+            min_hypot = down_hyp
+            best_spot = (wall[0], wall[1] + 1)
+        # If LEFT has the lowest hyp
+        left_hyp = math.hypot(self.actual_pos[0] - (wall[0] - 1), self.actual_pos[1] - wall[1])
+        if left and left_hyp < min_hypot:
+            min_hypot = left_hyp
+            best_spot = (wall[0] - 1, wall[1])
+        # If RIGHT has the lowest hyp
+        right_hyp = math.hypot(self.actual_pos[0] - (wall[0] + 1), self.actual_pos[1]  + wall[1])
+        if right and right_hyp < min_hypot:
+            min_hypot = right_hyp
+            best_spot = (wall[0] + 1, wall[1])       
+        logger.debug(f'Nearest wall: {wall}')
+        logger.debug(f'Best spot: {best_spot}')
+        return best_spot
 
-    # Close to the wall, wich place it's the best (Top, Bottom, Left, Right)  
-    def best_spot_wall (self, wall):
-        x_wall, y_wall = wall
-        x_pos, y_pos = self.actual_position
-        min_hypot = sys.maxsize        
-        bomb_spot = ""  # The spot where the bomb will be placed
-        bomb_spot_coords = [[0,0]]  # The coordinates where the bomb will be placed     
-        
-        # This will check if the walls are not on the limit of the map
-        # and if they do not have any other wall arround it
-        # ATTENTION: This will give false if there is a monster in the spot
-        
-        # If the spot above the wall it's free
-        up = True if y_wall + 1 != 0 and not Map.is_blocked(self.mapa, [x_wall, y_wall + 1]) else False
-        if up:
-            hyp = math.hypot(x_pos - x_wall, y_pos - y_wall + 1)
-            if hyp < min_hypot:
-                min_hypot = hyp
-                bomb_spot_coords[0] = [x_wall, y_wall+1] 
-                bomb_spot = "UP"
-            #self.logger.info(f'UP, Hyp: {hyp}')
-        
-        # If the spot under the wall it's free    
-        down = True if y_wall - 1 != 0 and not Map.is_blocked(self.mapa, [x_wall, y_wall-1]) else False
-        if down:
-            hyp = math.hypot(x_pos - x_wall, y_pos - y_wall - 1)
-            if hyp < min_hypot:
-                min_hypot = hyp
-                bomb_spot_coords[0] = [x_wall, y_wall - 1] 
-                bomb_spot = "DOWN"
-            #self.logger.info(f'DOWN, Hyp: {hyp}')
-        
-        # If the spot on the left of the wall it's free
-        left = True if x_wall - 1 != 0 and not Map.is_blocked(self.mapa, [x_wall - 1, y_wall]) else False
-        if left:
-            hyp = math.hypot(x_pos - x_wall - 1, y_pos - y_wall)
-            if hyp < min_hypot:
-                min_hypot = hyp
-                bomb_spot_coords[0] = [x_wall - 1, y_wall] 
-                bomb_spot = "LEFT"
-            #self.logger.info(f'LEFT, Hyp: {hyp}')
-        
-        # If the spot on the right of the wall it's free
-        right = True if x_wall + 1 != 0 and not Map.is_blocked(self.mapa, [x_wall + 1, y_wall]) else False
-        if right:
-            hyp = math.hypot(x_pos - x_wall + 1, y_pos - y_wall + 1)
-            if hyp < min_hypot:
-                min_hypot = hyp
-                bomb_spot_coords[0] = [x_wall + 1, y_wall] 
-                bomb_spot = "RIGHT"
-            #self.logger.info(f'RIGHT, Hyp: {hyp}')       
-       
-        #self.logger.info(f'UP: {up}, DOWN: {down}, LEFT: {left}, RIGHT: {right}.')
-        self.logger.info(f'Bomb_Spot: {bomb_spot}, Bomb_Spot_Coordinates: {bomb_spot_coords}, Hyp: {min_hypot}')
-        return bomb_spot_coords
+    # Find a safe spot not in the way of the bomb explosion
+    def hide_spot(self):
+        bomb_spot = self.actual_pos
 
-    # Place the bomb on the spot
-    def place_bomb_spot (self, destiny):
-        pos_x, pos_y = self.actual_pos
-        dest_x, dest_y = destiny
-        problem = SearchProblem(celula, actual_pos, destiny)
-        tree = SearchTree(problem, 'astar')
-        tree.search
+        pass
+
+    # Move function
+    def move(self, strategy):
+        bomb = False
+        celula = Celulas(self.mapa, self.last_pos)        
+        # Defend
+        if strategy == "def":
+            # Move to the nearest wall to place bomb
+            if self.walls != []:
+                move = self.place_bomb_wall()
+                #print(f'MOVE: {move}')
+                if (self.actual_pos[0], self.actual_pos[1]) == move:
+                    bomb = True
+
+        # Attack
+        if strategy == "att":
+            # usar a mm list comprehension c/ lambda functions, ter atençao q enemies é um dict
+            closest_enemy = self.closest_object(self.enemies)
         
+        problem = SearchProblem(celula, self.actual_pos, move)  # no [5,1] vai ter o objetivo
+        tree = SearchTree(problem, "astar")
+        best_path = (tree.search())  # Best_path = [ (x,y), (x-1,y)] perceber qdo desce, sobe, etc
+        #print(best_path)
+        if bomb == True:
+            bomb = False
+            return 'B'        
+        if best_path[1] == (self.actual_pos[0] - 1, self.actual_pos[1]):
+            return "a"
+        if best_path[1] == (self.actual_pos[0] + 1, self.actual_pos[1]):
+            return "d"
+        if best_path[1] == (self.actual_pos[0], self.actual_pos[1] - 1):
+            return "w"
+        if best_path[1] == (self.actual_pos[0], self.actual_pos[1] + 1):
+            return "s"
+
+
 async def agent_loop(server_address="localhost:8000", agent_name="student"):
     async with websockets.connect(f"ws://{server_address}/player") as websocket:
         # Receive information about static game properties
@@ -162,42 +153,58 @@ async def agent_loop(server_address="localhost:8000", agent_name="student"):
                 # Usar estrategias no agent, jogar à defensiva, ofensiva
                 # As ofensiva: ir para o inimigo | defensiva: ir para as paredes
                 # Ver se ele ainda tem muitas vidas, muitos inimigos, etc e isso tudo condiciona se ele vai ao ataque ou a defesa
-                agent.move('def')
+                key = agent.move("def")
+                #print(f"KEYYYY: {key}")
                 # Se ele ainda tiver as 3 vidas e muitos inimigos
                 # agent.move('att')
-                celula = Celulas(mapa)
-                
-                for key in agent.commands:
-                    await websocket.send(
-                        json.dumps({"cmd": "key", "key": key})
-                    )  # send key command to server - you must implement this send in the AI agent
-                    break
+
+                await websocket.send(
+                    json.dumps({"cmd": "key", "key": key})
+                )  # send key command to server - you must implement this send in the AI agent
             except websockets.exceptions.ConnectionClosedOK:
                 print("Server has cleanly disconnected us")
                 return
 
+
 class Celulas(SearchDomain):
-    def __init__(self,mapa):
+    def __init__(self, mapa, last_pos):
         self.mapa = mapa
+        self.last_pos = last_pos
 
     # verificar cada uma das 4 alternativas: cima, baixo, esquerda, direita
-    def actions(self,cidade):
+    def actions(self, pos):
         actlist = []
-        # if not self.map.blocked(cima) and cima != self.last_position:
-            #actlist.append({'move', up})
-        # REPETIR ISTO PARA TODAS AS DIRECTIONS
-        return actlist 
-        
+        up = (pos[0], pos[1] - 1)
+        down = (pos[0], pos[1] + 1)
+        left = (pos[0] - 1, pos[1])
+        right = (pos[0] + 1, pos[1])
+        # UP
+        if not self.mapa.is_blocked(up) and up != self.last_pos:
+            actlist.append(up)
+        # DOWN
+        if not self.mapa.is_blocked(down) and down != self.last_pos:
+            actlist.append(down)
+        # LEFT
+        if not self.mapa.is_blocked(left) and left != self.last_pos:
+            actlist.append(left)
+        # RIGHT
+        if not self.mapa.is_blocked(right) and right != self.last_pos:
+            actlist.append(right)
+
+        return actlist
+
+    # resultado de uma accao num estado, ou seja, o estado seguinte
     def result(self, position, move):
-        return move['move']
- 
+        return move
+
     def cost(self, state, action):
         return 1
-            
-    def heuristic(self, state, goal_state):
-        pos1_x, pos1_y = self.coordinates[state]
-        pos2_x, pos2_y = self.coordinates[goal_state]
+
+    def heuristic(self, pos, goal):
+        pos1_x, pos1_y = pos
+        pos2_x, pos2_y = goal
         return math.hypot(pos1_x - pos2_x, pos1_y - pos2_y)
+
 
 # DO NOT CHANGE THE LINES BELLOW
 # You can change the default values using the command line, example:
