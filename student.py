@@ -1,5 +1,6 @@
 import sys, json, asyncio, websockets, getpass, os, math, logging
 from mapa import Map
+from time import sleep
 from tree_search import *
 
 """
@@ -27,17 +28,20 @@ class Agent:
         self.exit = None
         self.enemies = None
         self.level = 1
-        self.exit = None
         self.last_pos = None
-        # Commands to execute
-        self.commands = []
+        self.bombs = None
+        # Safe spot from the bomb
+        self.safe_spot = None
+        # My go_to
+        self.move = None
+        self.drop = False
+        self.bomb_place = None
 
     # Update agent in each iteration
     def update_agent(self, state):
         self.state = state
         self.last_pos = self.actual_pos
         self.actual_pos = state["bomberman"]
-        # x, y da actual_pos
         self.x, self.y = self.actual_pos
         self.walls = state["walls"]
         self.enemies = state["enemies"]
@@ -45,6 +49,8 @@ class Agent:
         self.bonus = state["bonus"]
         self.exit = state["exit"]
         self.level = state["level"]
+        self.bombs = state['bombs']
+        #self.logger.info(f'- BOMB_PLACED:{self.bomb_placed}')
         #self.logger.debug(f"-> State: {self.state}")
         #self.logger.info(f"- Actual_Pos: {self.actual_pos}")
         #self.logger.info(f"- Walls: {self.walls}")
@@ -53,7 +59,7 @@ class Agent:
         #self.logger.info(f"- Bonus: {self.bonus}")
         #self.logger.info(f"- Exit: {self.exit}")
 
-    # Search for the closest wall/enemy
+    # Search for the closest wall
     def place_bomb_wall(self):
         min_hypot = sys.maxsize
         best_spot = (0,0)        
@@ -90,39 +96,88 @@ class Agent:
             best_spot = (wall[0] + 1, wall[1])       
         logger.debug(f'Nearest wall: {wall}')
         logger.debug(f'Best spot: {best_spot}')
+        self.bomb_place = best_spot
         return best_spot
 
     # Find a safe spot not in the way of the bomb explosion
     def hide_spot(self):
-        bomb_spot = self.actual_pos
+        # N = North, S = South, etc
+            # CASE 1
+        # S Z S         S = Safe spot   (x +- 1, y +- 1)
+        # Z B Z         Z = Possible Wall or Tile
+        # S Z S         B = Bomb Spot
+        # if (N & S == block) || (E & W == block):
+        #   then its case 1
 
-        pass
+            # CASE 2
+        # x S x S x
+        # S z z z S
+        # x z B z x
+        # S z z z S
+        # x S x S x 
+        # if (NE & NW & SE & SW):
+        #   then its case 2
+        hide_spots = []
+        # CASE 1: 
+        if (Map.is_blocked(self.mapa, [self.bomb_place[0], self.bomb_place[1] - 1]) and Map.is_blocked(self.mapa, [self.bomb_place[0], self.bomb_place[1] + 1]) # N & S
+            ) or (Map.is_blocked(self.mapa, [self.bomb_place[0]  - 1, self.bomb_place[1]]) and Map.is_blocked(self.mapa, [self.bomb_place[0] + 1, self.bomb_place[1]])):
+            print('N & S blocked')
+            # If NW not blocked append, then select the lowest
+            if not Map.is_blocked(self.mapa, [self.bomb_place[0] - 1, self.bomb_place[1] - 1]):
+                hide_spots.append((self.bomb_place[0] - 1, self.bomb_place[1] - 1))
+            # If SW not blocked append, then select the lowest
+            if not Map.is_blocked(self.mapa, [self.bomb_place[0] - 1, self.bomb_place[1] + 1]):
+                hide_spots.append((self.bomb_place[0] - 1, self.bomb_place[1] + 1))
+            # If NE not blocked append, then select the lowest
+            if not Map.is_blocked(self.mapa, [self.bomb_place[0] + 1, self.bomb_place[1] - 1]):
+                hide_spots.append((self.bomb_place[0] + 1, self.bomb_place[1] - 1))
+            # If SE not blocked append, then select the lowest
+            if not Map.is_blocked(self.mapa, [self.bomb_place[0] + 1, self.bomb_place[1] + 1]):
+                hide_spots.append((self.bomb_place[0] + 1, self.bomb_place[1] + 1))
+        if hide_spots == []:
+            print('not case 1, go to [1,1]')
+            return (1,1)
 
+        # TODO FALTA IMPLEMENTAR O CASE 2, CASE 1 TÁ OK, ESTAVEL MAS PRECISA DE MTAS MELHORIAS
+        print(hide_spots)
+        return min([(wall[0], wall[1]) for wall in hide_spots], key=lambda wall: math.hypot(self.bomb_place[0] - wall[0], self.bomb_place[1] - wall[1]))
     # Move function
-    def move(self, strategy):
-        bomb = False
+    def exec(self):
         celula = Celulas(self.mapa, self.last_pos)        
-        # Defend
-        if strategy == "def":
-            # Move to the nearest wall to place bomb
-            if self.walls != []:
-                move = self.place_bomb_wall()
-                #print(f'MOVE: {move}')
-                if (self.actual_pos[0], self.actual_pos[1]) == move:
-                    bomb = True
-
-        # Attack
-        if strategy == "att":
-            # usar a mm list comprehension c/ lambda functions, ter atençao q enemies é um dict
-            closest_enemy = self.closest_object(self.enemies)
         
-        problem = SearchProblem(celula, self.actual_pos, move)  # no [5,1] vai ter o objetivo
+        # --- Há bombas no mapa --
+        if self.bombs != []:
+            # Se não estás a ir para o safe_spot, vai
+            if not self.move == self.safe_spot:
+                self.move = self.hide_spot()
+                print(self.move)
+            # Se já estás abrigado
+            elif self.actual_pos == self.safe_spot:
+                # Espera que a bomba rebente
+                # Aqui não vai poder ficar a dormir, vai ter de ver se não tem nenhum inimigo em direção a ele
+                sleep(self.bomb_time)
+        
+        else:            
+            # Se houver powerups vai apanhar
+            #if self.powerups != []:
+            #    print('A IR PARA POWERUP ', self.powerups[0][1], self.powerups[0][0])
+            #    move = self.powerups[0][0]
+            # Se tiver inimigos vai matá-los
+            #elif self.enemies != []:
+                # Perceber qual é o mais perto e aproximar-se até o matar
+                #pass
+            # Se tiver paredes ainda para rebentar
+            if self.walls != []:    # Enquanto tiver walls para partir
+                self.drop = True
+                self.move = self.place_bomb_wall()
+            if self.drop == True and (self.actual_pos[0], self.actual_pos[1]) == self.bomb_place:
+                self.drop = False
+                return 'B'
+
+        #print(f'objetivo: {self.move} | Position: {self.actual_pos} | BOMB_DROP: {self.drop}')
+        problem = SearchProblem(celula, self.actual_pos, self.move)  # Move é o sitio a ir
         tree = SearchTree(problem, "astar")
-        best_path = (tree.search())  # Best_path = [ (x,y), (x-1,y)] perceber qdo desce, sobe, etc
-        #print(best_path)
-        if bomb == True:
-            bomb = False
-            return 'B'        
+        best_path = (tree.search())  # Best_path = [ (x,y), (x-1,y)] AKA lista de (x,y) a seguir, perceber qdo desde e sobe, etc
         if best_path[1] == (self.actual_pos[0] - 1, self.actual_pos[1]):
             return "a"
         if best_path[1] == (self.actual_pos[0] + 1, self.actual_pos[1]):
@@ -149,14 +204,12 @@ async def agent_loop(server_address="localhost:8000", agent_name="student"):
                 state = json.loads(
                     await websocket.recv()
                 )  # receive game state, this must be called timely or your game will get out of sync with the server
-                agent.update_agent(state)
+                
                 # Usar estrategias no agent, jogar à defensiva, ofensiva
                 # As ofensiva: ir para o inimigo | defensiva: ir para as paredes
                 # Ver se ele ainda tem muitas vidas, muitos inimigos, etc e isso tudo condiciona se ele vai ao ataque ou a defesa
-                key = agent.move("def")
-                #print(f"KEYYYY: {key}")
-                # Se ele ainda tiver as 3 vidas e muitos inimigos
-                # agent.move('att')
+                agent.update_agent(state)
+                key = agent.exec()
 
                 await websocket.send(
                     json.dumps({"cmd": "key", "key": key})
