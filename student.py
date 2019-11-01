@@ -62,41 +62,42 @@ class Agent:
     # Search for enemies
     def place_bomb_enemy(self):
         min_hypot = sys.maxsize
-        best_spot = (0,0)
+        best_spot = (1,1)
         # This lambda-function-list-comprehension-super-pythonic way will give the enemy  (the nearest) to KILL
         enemy = min([(enemy.get('pos')[0], enemy.get('pos')[1]) for enemy in self.enemies], key=lambda enemy: math.hypot(self.actual_pos[0] - enemy[0], self.actual_pos[1] - enemy[1]))
         # Now, for that enemy, look for the closes spot 2 blocks away from the enemy [top, down, left, right]
-        # If the spot UP the wall it's free
-        up =    True if enemy[1] + 1 != 0 and not Map.is_blocked(self.mapa, [enemy[0]     , enemy[1] - 1]) else False
-        # If the spot DOWN the wall it's free
-        down =  True if enemy[1] - 1 != 0 and not Map.is_blocked(self.mapa, [enemy[0]     , enemy[1] + 1]) else False
-        # If the spot LEFT of the wall it's free
-        left =  True if enemy[0] - 1 != 0 and not Map.is_blocked(self.mapa, [enemy[0] - 1 , enemy[1]])     else False
-        # If the spot RIGHT of the wall it's free
-        right = True if enemy[0] + 1 != 0 and not Map.is_blocked(self.mapa, [enemy[0] + 1 , enemy[1]])     else False
+        # If the spot UP the enemy it's free
+        up =    True if enemy[1] + 2 != 0 and not Map.is_blocked(self.mapa, [enemy[0]     , enemy[1] - 2]) else False
+        # If the spot DOWN the enemy it's free
+        down =  True if enemy[1] - 2 != 0 and not Map.is_blocked(self.mapa, [enemy[0]     , enemy[1] + 2]) else False
+        # If the spot LEFT of the enemy it's free
+        left =  True if enemy[0] - 2 != 0 and not Map.is_blocked(self.mapa, [enemy[0] - 2 , enemy[1]])     else False
+        # If the spot RIGHT of the enemy it's free
+        right = True if enemy[0] + 2 != 0 and not Map.is_blocked(self.mapa, [enemy[0] + 2 , enemy[1]])     else False
         # If UP has the lowest hyp
-        up_hyp = math.hypot(self.actual_pos[0] - enemy[0], self.actual_pos[1] - (enemy[1] - 1))
+        up_hyp = math.hypot(self.actual_pos[0] - enemy[0], self.actual_pos[1] - (enemy[1] - 2))
         if up and up_hyp < min_hypot:
             min_hypot = up_hyp
             best_spot = (enemy[0], enemy[1] - 2)
         # If DOWN has the lowest hyp
-        down_hyp = math.hypot(self.actual_pos[0] - enemy[0], self.actual_pos[1] - (enemy[1] + 1))
+        down_hyp = math.hypot(self.actual_pos[0] - enemy[0], self.actual_pos[1] - (enemy[1] + 2))
         if down and down_hyp < min_hypot:
             min_hypot = down_hyp
             best_spot = (enemy[0], enemy[1] + 2)
         # If LEFT has the lowest hyp
-        left_hyp = math.hypot(self.actual_pos[0] - (enemy[0] - 1), self.actual_pos[1] - enemy[1])
+        left_hyp = math.hypot(self.actual_pos[0] - (enemy[0] - 2), self.actual_pos[1] - enemy[1])
         if left and left_hyp < min_hypot:
             min_hypot = left_hyp
             best_spot = (enemy[0] - 2, enemy[1])
         # If RIGHT has the lowest hyp
-        right_hyp = math.hypot(self.actual_pos[0] - (enemy[0] + 1), self.actual_pos[1]  + enemy[1])
+        right_hyp = math.hypot(self.actual_pos[0] - (enemy[0] + 2), self.actual_pos[1]  + enemy[1])
         if right and right_hyp < min_hypot:
             min_hypot = right_hyp
             best_spot = (enemy[0] + 2, enemy[1])       
         logger.debug(f'Nearest wall: {enemy}')
         logger.debug(f'Best spot: {best_spot}')
         self.bomb_place = best_spot
+        print(best_spot)
         return best_spot             
 
     # Search for the closest wall
@@ -141,7 +142,7 @@ class Agent:
 
     # Find a safe spot not in the way of the bomb explosion
     def hide_spot(self):
-        
+        '''
         possible_spots = [(self.bomb_place[0] + 1, self.bomb_place[1] - 2),
                               (self.bomb_place[0] + 1, self.bomb_place[1] + 2),
                               (self.bomb_place[0] - 1, self.bomb_place[1] - 2),
@@ -150,7 +151,7 @@ class Agent:
                               (self.bomb_place[0] - 2, self.bomb_place[1] - 1),
                               (self.bomb_place[0] + 2, self.bomb_place[1] + 1),
                               (self.bomb_place[0] + 2, self.bomb_place[1] - 1)]
-        
+        '''
         # N = North, S = South, etc
             # CASE 1
         # S Z S         S = Safe spot   (x +- 1, y +- 1)
@@ -212,28 +213,34 @@ class Agent:
                 possible_spots.remove((self.bomb_place[0] + 2, self.bomb_place[1] + 1))
                 possible_spots.remove((self.bomb_place[0] + 2, self.bomb_place[1] - 1))
                 '''
-            
+           
             #-------------------------------------------------------------
             
             # If N is blocked
             if not (Map.is_blocked(self.mapa, [self.bomb_place[0], self.bomb_place[1] - 1])):
-                hide_spots.append((self.bomb_place[0] - 1, self.bomb_place[1] - 2))
-                hide_spots.append((self.bomb_place[0] + 1, self.bomb_place[1] - 2))
+                if (self.bomb_place[0] - 1) > 0 and (self.bomb_place[1] - 2) > 0:
+                    hide_spots.append((self.bomb_place[0] - 1, self.bomb_place[1] - 2))
+                if (self.bomb_place[0] + 1) > 50 and (self.bomb_place[1] - 2) > 0:
+                    hide_spots.append((self.bomb_place[0] + 1, self.bomb_place[1] - 2))
             # If S is blocked
             if not (Map.is_blocked(self.mapa, [self.bomb_place[0], self.bomb_place[1] + 1])):
-                hide_spots.append((self.bomb_place[0] - 1, self.bomb_place[1] + 2))
-                hide_spots.append((self.bomb_place[0] + 1, self.bomb_place[1] + 2))
+                if (self.bomb_place[0] - 1) > 0 and (self.bomb_place[1] + 2) > 30:
+                    hide_spots.append((self.bomb_place[0] - 1, self.bomb_place[1] + 2))
+                if (self.bomb_place[0] + 1) > 50 and (self.bomb_place[1] + 2) > 30:
+                    hide_spots.append((self.bomb_place[0] + 1, self.bomb_place[1] + 2))
             # If E is blocked
             if not (Map.is_blocked(self.mapa, [self.bomb_place[0] - 1 , self.bomb_place[1]])):
-                hide_spots.append((self.bomb_place[0] - 2, self.bomb_place[1] + 1))
-                hide_spots.append((self.bomb_place[0] - 2, self.bomb_place[1] - 1))
+                if (self.bomb_place[0] - 2) > 0 and (self.bomb_place[1] + 1) > 30:
+                    hide_spots.append((self.bomb_place[0] - 2, self.bomb_place[1] + 1))
+                if (self.bomb_place[0] - 2) > 0 and (self.bomb_place[1] - 1) > 0:
+                    hide_spots.append((self.bomb_place[0] - 2, self.bomb_place[1] - 1))
             # If O is blocked
             if not (Map.is_blocked(self.mapa, [self.bomb_place[0] + 1 , self.bomb_place[1]])):
-                hide_spots.append((self.bomb_place[0] + 2, self.bomb_place[1] + 1))
-                hide_spots.append((self.bomb_place[0] + 2, self.bomb_place[1] - 1))
+                if (self.bomb_place[0] + 2) > 50 and (self.bomb_place[1] + 1) > 30:
+                    hide_spots.append((self.bomb_place[0] + 2, self.bomb_place[1] + 1))
+                if (self.bomb_place[0] + 2) > 50 and (self.bomb_place[1] - 1) > 0:
+                    hide_spots.append((self.bomb_place[0] + 2, self.bomb_place[1] - 1))
             
-            
-            hide_spots = possible_spots     
                 
         if hide_spots == []:
             print('not case 2 nor case 1, go to [1,1]')
@@ -257,11 +264,14 @@ class Agent:
             if not self.move == self.safe_spot:
                 self.move = self.hide_spot()
                 print(self.move)
+                print("1")
+                #PÀRA AQUI
             # Se já estás abrigado
             elif self.actual_pos == self.safe_spot:
                 # Espera que a bomba rebente
                 # Aqui não vai poder ficar a dormir, vai ter de ver se não tem nenhum inimigo em direção a ele
-                sleep(self.bomb_time)
+                sleep(3)
+                print("2")
         
         else:            
             # Se houver powerups vai apanhar
@@ -274,13 +284,16 @@ class Agent:
                 # Perceber qual é o mais perto e aproximar-se até o matar
                 self.drop = True
                 self.move = self.place_bomb_enemy()
+                print("3")
             # Se tiver paredes ainda para rebentar
             if self.walls != []:    # Enquanto tiver walls para partir
-                #print(" STILL WALLS TO BLOW ")
+            #    #print(" STILL WALLS TO BLOW ")
                 self.drop = True
                 self.move = self.place_bomb_wall()
+                print("4")
             if self.drop == True and (self.actual_pos[0], self.actual_pos[1]) == self.bomb_place:
                 self.drop = False
+                print("5")
                 return 'B'
 
         #print(f'objetivo: {self.move} | Position: {self.actual_pos} | BOMB_DROP: {self.drop}')
