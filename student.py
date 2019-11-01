@@ -265,7 +265,7 @@ class Agent:
                 self.move = self.hide_spot()
                 print(self.move)
                 print("1")
-                #PÀRA AQUI
+                #PÀRA AQUIII
             # Se já estás abrigado
             elif self.actual_pos == self.safe_spot:
                 # Espera que a bomba rebente
