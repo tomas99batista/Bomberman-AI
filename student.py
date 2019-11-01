@@ -184,16 +184,14 @@ class Agent:
             # If SE not blocked append, then select the lowest
             if not Map.is_blocked(self.mapa, [self.bomb_place[0] + 1, self.bomb_place[1] + 1]):
                 hide_spots.append((self.bomb_place[0] + 1, self.bomb_place[1] + 1))
-        #if hide_spots == []:
-        #   print('not case 1, go to [1,1]')
-        #   return (1,1)
 
         # TODO FALTA IMPLEMENTAR O CASE 2, CASE 1 TÁ OK, ESTAVEL MAS PRECISA DE MTAS MELHORIAS
         # CASE 2:   
         # THIS TAKES TOO MUCH TIME (I THINK)
-        elif  Map.is_blocked(self.mapa, [self.bomb_place[0] - 1, self.bomb_place[1] - 1]) and Map.is_blocked(self.mapa, [self.bomb_place[0] - 1, self.bomb_place[1] + 1]) and Map.is_blocked(self.mapa, [self.bomb_place[0] + 1, self.bomb_place[1] - 1]) and Map.is_blocked(self.mapa, [self.bomb_place[0] + 1, self.bomb_place[1] + 1]):
+        if  Map.is_blocked(self.mapa, [self.bomb_place[0] - 1, self.bomb_place[1] - 1]) and Map.is_blocked(self.mapa, [self.bomb_place[0] - 1, self.bomb_place[1] + 1]) and Map.is_blocked(self.mapa, [self.bomb_place[0] + 1, self.bomb_place[1] - 1]) and Map.is_blocked(self.mapa, [self.bomb_place[0] + 1, self.bomb_place[1] + 1]):
             print('NE & NW & SE & SW are blocked')
             
+            '''
             if (Map.is_blocked(self.mapa, [self.bomb_place[0], self.bomb_place[1] - 1])):
                 print("N is blocked")
                 possible_spots.remove((self.bomb_place[0] - 1, self.bomb_place[1] - 2))
@@ -213,12 +211,33 @@ class Agent:
                 print("O is blocked")
                 possible_spots.remove((self.bomb_place[0] + 2, self.bomb_place[1] + 1))
                 possible_spots.remove((self.bomb_place[0] + 2, self.bomb_place[1] - 1))
-        
+                '''
+            
+            #-------------------------------------------------------------
+            
+            # If N is blocked
+            if not (Map.is_blocked(self.mapa, [self.bomb_place[0], self.bomb_place[1] - 1])):
+                hide_spots.append((self.bomb_place[0] - 1, self.bomb_place[1] - 2))
+                hide_spots.append((self.bomb_place[0] + 1, self.bomb_place[1] - 2))
+            # If S is blocked
+            if not (Map.is_blocked(self.mapa, [self.bomb_place[0], self.bomb_place[1] + 1])):
+                hide_spots.append((self.bomb_place[0] - 1, self.bomb_place[1] + 2))
+                hide_spots.append((self.bomb_place[0] + 1, self.bomb_place[1] + 2))
+            # If E is blocked
+            if not (Map.is_blocked(self.mapa, [self.bomb_place[0] - 1 , self.bomb_place[1]])):
+                hide_spots.append((self.bomb_place[0] - 2, self.bomb_place[1] + 1))
+                hide_spots.append((self.bomb_place[0] - 2, self.bomb_place[1] - 1))
+            # If O is blocked
+            if not (Map.is_blocked(self.mapa, [self.bomb_place[0] + 1 , self.bomb_place[1]])):
+                hide_spots.append((self.bomb_place[0] + 2, self.bomb_place[1] + 1))
+                hide_spots.append((self.bomb_place[0] + 2, self.bomb_place[1] - 1))
+            
+            
             hide_spots = possible_spots     
                 
         if hide_spots == []:
-            print('not case 2, go to [1,1]')
-            hide_spots.append((1,1))
+            print('not case 2 nor case 1, go to [1,1]')
+            return((1,1))
         
         #print(hide_spots)
         print("MIN:",min([(wall[0], wall[1]) for wall in hide_spots], key=lambda wall: math.hypot(self.bomb_place[0] - wall[0], self.bomb_place[1] - wall[1])))
@@ -250,12 +269,14 @@ class Agent:
             #    print('A IR PARA POWERUP ', self.powerups[0][1], self.powerups[0][0])
             #    move = self.powerups[0][0]
             # Se tiver inimigos vai matá-los
-            if self.enemies != []:
+            if self.enemies != [] and self.walls == []:
+            #    print(" STILL ENEMIES TO KILL ")
                 # Perceber qual é o mais perto e aproximar-se até o matar
                 self.drop = True
                 self.move = self.place_bomb_enemy()
             # Se tiver paredes ainda para rebentar
             if self.walls != []:    # Enquanto tiver walls para partir
+                #print(" STILL WALLS TO BLOW ")
                 self.drop = True
                 self.move = self.place_bomb_wall()
             if self.drop == True and (self.actual_pos[0], self.actual_pos[1]) == self.bomb_place:
