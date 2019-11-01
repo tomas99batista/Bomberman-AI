@@ -58,6 +58,46 @@ class Agent:
         #self.logger.info(f"- Powerups: {self.powerups}")
         #self.logger.info(f"- Bonus: {self.bonus}")
         #self.logger.info(f"- Exit: {self.exit}")
+        
+    # Search for enemies
+    def place_bomb_enemy(self):
+        min_hypot = sys.maxsize
+        best_spot = (0,0)
+        # This lambda-function-list-comprehension-super-pythonic way will give the enemy  (the nearest) to KILL
+        enemy = min([(enemy.get('pos')[0], enemy.get('pos')[1]) for enemy in self.enemies], key=lambda enemy: math.hypot(self.actual_pos[0] - enemy[0], self.actual_pos[1] - enemy[1]))
+        # Now, for that enemy, look for the closes spot 2 blocks away from the enemy [top, down, left, right]
+        # If the spot UP the wall it's free
+        up =    True if enemy[1] + 1 != 0 and not Map.is_blocked(self.mapa, [enemy[0]     , enemy[1] - 1]) else False
+        # If the spot DOWN the wall it's free
+        down =  True if enemy[1] - 1 != 0 and not Map.is_blocked(self.mapa, [enemy[0]     , enemy[1] + 1]) else False
+        # If the spot LEFT of the wall it's free
+        left =  True if enemy[0] - 1 != 0 and not Map.is_blocked(self.mapa, [enemy[0] - 1 , enemy[1]])     else False
+        # If the spot RIGHT of the wall it's free
+        right = True if enemy[0] + 1 != 0 and not Map.is_blocked(self.mapa, [enemy[0] + 1 , enemy[1]])     else False
+        # If UP has the lowest hyp
+        up_hyp = math.hypot(self.actual_pos[0] - enemy[0], self.actual_pos[1] - (enemy[1] - 1))
+        if up and up_hyp < min_hypot:
+            min_hypot = up_hyp
+            best_spot = (enemy[0], enemy[1] - 2)
+        # If DOWN has the lowest hyp
+        down_hyp = math.hypot(self.actual_pos[0] - enemy[0], self.actual_pos[1] - (enemy[1] + 1))
+        if down and down_hyp < min_hypot:
+            min_hypot = down_hyp
+            best_spot = (enemy[0], enemy[1] + 2)
+        # If LEFT has the lowest hyp
+        left_hyp = math.hypot(self.actual_pos[0] - (enemy[0] - 1), self.actual_pos[1] - enemy[1])
+        if left and left_hyp < min_hypot:
+            min_hypot = left_hyp
+            best_spot = (enemy[0] - 2, enemy[1])
+        # If RIGHT has the lowest hyp
+        right_hyp = math.hypot(self.actual_pos[0] - (enemy[0] + 1), self.actual_pos[1]  + enemy[1])
+        if right and right_hyp < min_hypot:
+            min_hypot = right_hyp
+            best_spot = (enemy[0] + 2, enemy[1])       
+        logger.debug(f'Nearest wall: {enemy}')
+        logger.debug(f'Best spot: {best_spot}')
+        self.bomb_place = best_spot
+        return best_spot             
 
     # Search for the closest wall
     def place_bomb_wall(self):
@@ -134,13 +174,54 @@ class Agent:
             # If SE not blocked append, then select the lowest
             if not Map.is_blocked(self.mapa, [self.bomb_place[0] + 1, self.bomb_place[1] + 1]):
                 hide_spots.append((self.bomb_place[0] + 1, self.bomb_place[1] + 1))
-        if hide_spots == []:
-            print('not case 1, go to [1,1]')
-            return (1,1)
+        #if hide_spots == []:
+        #   print('not case 1, go to [1,1]')
+        #   return (1,1)
 
         # TODO FALTA IMPLEMENTAR O CASE 2, CASE 1 TÁ OK, ESTAVEL MAS PRECISA DE MTAS MELHORIAS
+        # CASE 2:   
+        possible_spots = [(self.bomb_place[0] + 1, self.bomb_place[1] - 2),
+                              (self.bomb_place[0] + 1, self.bomb_place[1] + 2),
+                              (self.bomb_place[0] - 1, self.bomb_place[1] - 2),
+                              (self.bomb_place[0] - 1, self.bomb_place[1] + 2),
+                              (self.bomb_place[0] - 2, self.bomb_place[1] + 1),
+                              (self.bomb_place[0] - 2, self.bomb_place[1] - 1),
+                              (self.bomb_place[0] + 2, self.bomb_place[1] + 1),
+                              (self.bomb_place[0] + 2, self.bomb_place[1] - 1)]
+        if  Map.is_blocked(self.mapa, [self.bomb_place[0] - 1, self.bomb_place[1] - 1]) and Map.is_blocked(self.mapa, [self.bomb_place[0] - 1, self.bomb_place[1] + 1]) and Map.is_blocked(self.mapa, [self.bomb_place[0] + 1, self.bomb_place[1] - 1]) and Map.is_blocked(self.mapa, [self.bomb_place[0] + 1, self.bomb_place[1] + 1]):
+            print('NE & NW & SE & SW are blocked')
+            
+            if (Map.is_blocked(self.mapa, [self.bomb_place[0], self.bomb_place[1] - 1])):
+                print("N is blocked")
+                possible_spots.remove((self.bomb_place[0] - 1, self.bomb_place[1] - 2))
+                possible_spots.remove((self.bomb_place[0] + 1, self.bomb_place[1] - 2))
+                
+            if (Map.is_blocked(self.mapa, [self.bomb_place[0], self.bomb_place[1] + 1])):
+                print("S is blocked")
+                possible_spots.remove((self.bomb_place[0] - 1, self.bomb_place[1] + 2))
+                possible_spots.remove((self.bomb_place[0] + 1, self.bomb_place[1] + 2))
+                
+            if (Map.is_blocked(self.mapa, [self.bomb_place[0] - 1 , self.bomb_place[1]])):
+                print("E is blocked")
+                possible_spots.remove((self.bomb_place[0] - 2, self.bomb_place[1] + 1))
+                possible_spots.remove((self.bomb_place[0] - 2, self.bomb_place[1] - 1))
+                
+            if (Map.is_blocked(self.mapa, [self.bomb_place[0] + 1 , self.bomb_place[1]])):
+                print("O is blocked")
+                possible_spots.remove((self.bomb_place[0] + 2, self.bomb_place[1] + 1))
+                possible_spots.remove((self.bomb_place[0] + 2, self.bomb_place[1] - 1))          
+                
+        if hide_spots == []:
+            print('not case 2, go to [1,1]')
+            return (1,1)
+        
         print(hide_spots)
         return min([(wall[0], wall[1]) for wall in hide_spots], key=lambda wall: math.hypot(self.bomb_place[0] - wall[0], self.bomb_place[1] - wall[1]))
+    
+    #def kill_spot(self):
+        
+        
+    
     # Move function
     def exec(self):
         celula = Celulas(self.mapa, self.last_pos)        
@@ -163,9 +244,10 @@ class Agent:
             #    print('A IR PARA POWERUP ', self.powerups[0][1], self.powerups[0][0])
             #    move = self.powerups[0][0]
             # Se tiver inimigos vai matá-los
-            #elif self.enemies != []:
+            if self.enemies != []:
                 # Perceber qual é o mais perto e aproximar-se até o matar
-                #pass
+                self.drop = True
+                self.move = self.place_bomb_enemy()
             # Se tiver paredes ainda para rebentar
             if self.walls != []:    # Enquanto tiver walls para partir
                 self.drop = True
