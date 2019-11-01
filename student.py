@@ -141,6 +141,16 @@ class Agent:
 
     # Find a safe spot not in the way of the bomb explosion
     def hide_spot(self):
+        
+        possible_spots = [(self.bomb_place[0] + 1, self.bomb_place[1] - 2),
+                              (self.bomb_place[0] + 1, self.bomb_place[1] + 2),
+                              (self.bomb_place[0] - 1, self.bomb_place[1] - 2),
+                              (self.bomb_place[0] - 1, self.bomb_place[1] + 2),
+                              (self.bomb_place[0] - 2, self.bomb_place[1] + 1),
+                              (self.bomb_place[0] - 2, self.bomb_place[1] - 1),
+                              (self.bomb_place[0] + 2, self.bomb_place[1] + 1),
+                              (self.bomb_place[0] + 2, self.bomb_place[1] - 1)]
+        
         # N = North, S = South, etc
             # CASE 1
         # S Z S         S = Safe spot   (x +- 1, y +- 1)
@@ -180,15 +190,8 @@ class Agent:
 
         # TODO FALTA IMPLEMENTAR O CASE 2, CASE 1 TÁ OK, ESTAVEL MAS PRECISA DE MTAS MELHORIAS
         # CASE 2:   
-        possible_spots = [(self.bomb_place[0] + 1, self.bomb_place[1] - 2),
-                              (self.bomb_place[0] + 1, self.bomb_place[1] + 2),
-                              (self.bomb_place[0] - 1, self.bomb_place[1] - 2),
-                              (self.bomb_place[0] - 1, self.bomb_place[1] + 2),
-                              (self.bomb_place[0] - 2, self.bomb_place[1] + 1),
-                              (self.bomb_place[0] - 2, self.bomb_place[1] - 1),
-                              (self.bomb_place[0] + 2, self.bomb_place[1] + 1),
-                              (self.bomb_place[0] + 2, self.bomb_place[1] - 1)]
-        if  Map.is_blocked(self.mapa, [self.bomb_place[0] - 1, self.bomb_place[1] - 1]) and Map.is_blocked(self.mapa, [self.bomb_place[0] - 1, self.bomb_place[1] + 1]) and Map.is_blocked(self.mapa, [self.bomb_place[0] + 1, self.bomb_place[1] - 1]) and Map.is_blocked(self.mapa, [self.bomb_place[0] + 1, self.bomb_place[1] + 1]):
+        # THIS TAKES TOO MUCH TIME (I THINK)
+        elif  Map.is_blocked(self.mapa, [self.bomb_place[0] - 1, self.bomb_place[1] - 1]) and Map.is_blocked(self.mapa, [self.bomb_place[0] - 1, self.bomb_place[1] + 1]) and Map.is_blocked(self.mapa, [self.bomb_place[0] + 1, self.bomb_place[1] - 1]) and Map.is_blocked(self.mapa, [self.bomb_place[0] + 1, self.bomb_place[1] + 1]):
             print('NE & NW & SE & SW are blocked')
             
             if (Map.is_blocked(self.mapa, [self.bomb_place[0], self.bomb_place[1] - 1])):
@@ -209,17 +212,20 @@ class Agent:
             if (Map.is_blocked(self.mapa, [self.bomb_place[0] + 1 , self.bomb_place[1]])):
                 print("O is blocked")
                 possible_spots.remove((self.bomb_place[0] + 2, self.bomb_place[1] + 1))
-                possible_spots.remove((self.bomb_place[0] + 2, self.bomb_place[1] - 1))          
+                possible_spots.remove((self.bomb_place[0] + 2, self.bomb_place[1] - 1))
+        
+            hide_spots = possible_spots     
                 
         if hide_spots == []:
             print('not case 2, go to [1,1]')
-            return (1,1)
+            hide_spots.append((1,1))
         
-        print(hide_spots)
+        #print(hide_spots)
+        print("MIN:",min([(wall[0], wall[1]) for wall in hide_spots], key=lambda wall: math.hypot(self.bomb_place[0] - wall[0], self.bomb_place[1] - wall[1])))
         return min([(wall[0], wall[1]) for wall in hide_spots], key=lambda wall: math.hypot(self.bomb_place[0] - wall[0], self.bomb_place[1] - wall[1]))
+
     
-    #def kill_spot(self):
-        
+       
         
     
     # Move function
