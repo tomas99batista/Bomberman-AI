@@ -150,13 +150,5 @@ class SearchTree:
 
     # juntar novos nos a lista de nos abertos de acordo com a estrategia
     def add_to_open(self,lnewnodes):
-        if self.strategy == 'breadth':
-            self.open_nodes.extend(lnewnodes)
-        elif self.strategy == 'depth':
-            self.open_nodes[:0] = lnewnodes #[:0] c/ os : ele insere na pos 0 s/ apagar, insert x   
-        elif self.strategy == 'uniform':
-            self.open_nodes = sorted(self.open_nodes + lnewnodes, key=lambda no: no.cost)
-        elif self.strategy == 'greedy':
-            self.open_nodes = sorted(self.open_nodes + lnewnodes, key=lambda no: no.heuristic)
-        elif self.strategy == 'astar':
+        if self.strategy == 'astar':
             self.open_nodes = sorted(self.open_nodes + lnewnodes, key=lambda no: no.cost + no.heuristic)

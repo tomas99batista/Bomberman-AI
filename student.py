@@ -37,6 +37,7 @@ class Agent:
         self.drop = False
         self.bomb_place = None
         self.enemy_place = None
+        self.action_keys = []
 
     # Update agent in each iteration
     def update_agent(self, state):
@@ -51,14 +52,6 @@ class Agent:
         self.exit = state["exit"]
         self.level = state["level"]
         self.bombs = state['bombs']
-        #self.logger.info(f'- BOMB_PLACED:{self.bomb_placed}')
-        #self.logger.debug(f"-> State: {self.state}")
-        #self.logger.info(f"- Actual_Pos: {self.actual_pos}")
-        #self.logger.info(f"- Walls: {self.walls}")
-        #self.logger.info(f"- Enemies: {self.enemies}")
-        #self.logger.info(f"- Powerups: {self.powerups}")
-        #self.logger.info(f"- Bonus: {self.bonus}")
-        #self.logger.info(f"- Exit: {self.exit}")
         
     # Search for enemies
     def place_bomb_enemy(self):
@@ -66,9 +59,9 @@ class Agent:
         best_spot = (1,1)
         # This lambda-function-list-comprehension-super-pythonic way will give the enemy  (the nearest) to KILL
         enemy = min([(enemy.get('pos')[0], enemy.get('pos')[1]) for enemy in self.enemies], key=lambda enemy: math.hypot(self.actual_pos[0] - enemy[0], self.actual_pos[1] - enemy[1]))
-        if math.hypot(self.actual_pos[0] - enemy[0], self.actual_pos[1] - enemy[1]) > (self.mapa.size[0]/2) :
-            print('enemies longe, vai ate ao meio')
-            return (25,15)
+        # if math.hypot(self.actual_pos[0] - enemy[0], self.actual_pos[1] - enemy[1]) > (self.mapa.size[0]/2) :
+            # print('enemies longe, vai ate ao meio')
+            # return (25,15)
         self.enemy_place = enemy
         # Now, for that enemy, look for the closes spot 2 blocks away from the enemy [top, down, left, right]
         # If the spot UP the enemy it's free
@@ -268,7 +261,7 @@ class Agent:
                 # oq importa é se no caminho eles têm paredes pelo meio oq implica q eles demorem + mas ok
                 spot = min([(wall[0], wall[1]) for wall in hide_spots], key=lambda wall: math.hypot(self.bomb_place[0] - wall[0], self.bomb_place[1] - wall[1]))                  
                 self.safe_spot = spot
-                return spot            #print('c2 vazio')
+                return spot           
             
         else:
             #print('c1 e c2 ao mm tempo')
@@ -276,75 +269,85 @@ class Agent:
         
     # Move function
     def exec(self):
-        
-        # --- Há bombas no mapa --
-        if self.bombs != []:
-            # Se não estás a ir para o safe_spot, vai
-            if self.move != self.safe_spot:
-                self.move = self.hide_spot()
-                self.logger.info(f'ir para safe_spot: {self.move}')
-            # Se já estás abrigado
-            if (self.actual_pos[0], self.actual_pos[1]) == (self.safe_spot[0], self.safe_spot[1]):
-                # Espera que a bomba rebente
-                # Aqui não vai poder ficar a dormir, vai ter de ver se não tem nenhum inimigo em direção a ele
-                # self.move = self.dodge_enemies()
-                self.logger.info(f'tou no safe_spot: {self.actual_pos}')
-                return "" # futuramente por A, qdo ele tiver o detonator
-        # --- Não há --
-        else:            
-            # Se houver powerups vai apanhar
-            if False: #self.powerups != []:
-               #print(f'ir para powerup: {self.powerups[0][0]}')
-               #move = (self.powerups[0][0])
-               pass
-            # Se não tem
-            else:
-                # Se tiver inimigos para matar
-                if self.enemies != []:
-                    self.drop = True
-                    self.move = self.place_bomb_enemy()
-                    self.logger.info(f'proximo enemie: {self.move}')
-                else:    
-                    # Se já matou todos, vai as paredes
-                    # Se já não tem inimigos e já conhece a saída, poẽ-te a andar
-                    if self.exit != []:
-                        self.logger.info(self.state)
-                        self.logger.info(f'Exit: {self.exit}')
-                        self.move = (self.exit[0], self.exit[1])
-                    else:
+        # Se tem teclas em espera para executar
+        if self.action_keys != []:
+            self.logger.info(f'ACTION_KES: {self.action_keys}')
+            key = self.action_keys.pop(0)
+            return key
+        # Se nao calcula teclas
+        else:
+            # --- Há bombas no mapa --
+            if self.bombs != []:
+                # Se não estás a ir para o safe_spot, vai
+                if self.move != self.safe_spot:
+                    self.move = self.hide_spot()
+                    self.logger.info(f'ir para safe_spot: {self.move}')
+                # Se já estás abrigado
+                if (self.actual_pos[0], self.actual_pos[1]) == (self.safe_spot[0], self.safe_spot[1]):
+                    # Espera que a bomba rebente
+                    # Aqui não vai poder ficar a dormir, vai ter de ver se não tem nenhum inimigo em direção a ele
+                    # self.move = self.dodge_enemies()
+                    self.logger.info(f'tou no safe_spot: {self.actual_pos}')
+                    return "" # futuramente por A, qdo ele tiver o detonator
+            # --- Não há --
+            else:            
+                # Se houver powerups vai apanhar
+                if False: #self.powerups != []:
+                   #print(f'ir para powerup: {self.powerups[0][0]}')
+                   #move = (self.powerups[0][0])
+                   pass
+                # Se não tem
+                else:
+                    # Se tiver inimigos para matar
+                    if self.enemies != []:
                         self.drop = True
-                        self.move = self.place_bomb_wall()
-                        self.logger.info(f'wall: {self.move}')
-        self.logger.info(f'1 - Move: {self.move}')
+                        self.move = self.place_bomb_enemy()
+                        self.logger.info(f'proximo enemie: {self.move}')
+                    else:    
+                        # Se já matou todos, vai as paredes
+                        # Se já não tem inimigos e já conhece a saída, poẽ-te a andar
+                        if self.exit != []:
+                            self.logger.info(self.state)
+                            self.logger.info(f'Exit: {self.exit}')
+                            self.move = (self.exit[0], self.exit[1])
+                        else:
+                            self.drop = True
+                            self.move = self.place_bomb_wall()
+                            self.logger.info(f'wall: {self.move}')
 
-        if self.drop == True and (self.actual_pos[0], self.actual_pos[1]) == self.bomb_place:
-            self.drop = False
-            self.logger.info(f'bomb_drop: {self.actual_pos}')
-            return 'B'
-        self.logger.info(f'2 - Move: {self.move}')
+            if self.drop == True and (self.actual_pos[0], self.actual_pos[1]) == self.bomb_place:
+                self.drop = False
+                self.logger.info(f'bomb_drop: {self.actual_pos}')
+                return 'B'
 
-        if self.exit != []:
-            saida = (self.exit[0], self.exit[1])
-            if self.enemies == []:
-                self.move = saida
-                self.logger.info(f'vai saida: {self.move} || {saida}')
-        self.logger.info(f'3 - Move: {self.move}')
+            if self.exit != []:
+                saida = (self.exit[0], self.exit[1])
+                if self.enemies == []:
+                    self.move = saida
+                    self.logger.info(f'vai saida: {self.move} || {saida}')
 
-        celula = Celulas(self.mapa, self.last_pos)        
-        problem = SearchProblem(celula, self.actual_pos, self.move)  # Move é o sitio a ir
-        tree = SearchTree(problem, "astar")
-        best_path = (tree.search())  # Best_path = [ (x,y), (x-1,y)] AKA lista de (x,y) a seguir, perceber qdo desde e sobe, etc
-        self.logger.info(f'Best_path: {best_path}')
-        if best_path == []:
-            self.logger.info("N TENHO PARA ONDE IR")
-        if best_path[1] == (self.actual_pos[0] - 1, self.actual_pos[1]):
-            return "a"
-        if best_path[1] == (self.actual_pos[0] + 1, self.actual_pos[1]):
-            return "d"
-        if best_path[1] == (self.actual_pos[0], self.actual_pos[1] - 1):
-            return "w"
-        if best_path[1] == (self.actual_pos[0], self.actual_pos[1] + 1):
-            return "s"
+            self.logger.info(f'Move: {self.move}')
+            celula = Celulas(self.mapa, self.last_pos)        
+            problem = SearchProblem(celula, self.actual_pos, self.move)  # Move é o sitio a ir
+            tree = SearchTree(problem, "astar")
+            best_path = tree.search()  # Best_path = [ (x,y), (x-1,y)] AKA lista de (x,y) a seguir, perceber qdo desde e sobe, etc
+            self.logger.info(f'Best_path: {best_path}')
+            if best_path == []:
+                self.logger.info("N TENHO PARA ONDE IR")
+            lp = (self.actual_pos[0], self.actual_pos[1])
+            for mv in best_path:
+                x, y = mv
+                a, b = lp
+                if (x,y) == (a - 1, b):
+                    self.action_keys.append("w")
+                if (x,y) == (a+ 1, b):
+                    self.action_keys.append("s")
+                if (x,y) == (a, b - 1):
+                    self.action_keys.append("a")
+                if (x,y) == (a, b + 1):
+                    self.action_keys.append("d")
+                lp = mv
+            return ''
 
 
 async def agent_loop(server_address="localhost:8000", agent_name="student"):
@@ -363,7 +366,7 @@ async def agent_loop(server_address="localhost:8000", agent_name="student"):
                 state = json.loads(
                     await websocket.recv()
                 )  # receive game state, this must be called timely or your game will get out of sync with the server
-                
+                mapa.walls = state['walls']
                 agent.update_agent(state)
                 key = agent.exec()
 
@@ -389,22 +392,30 @@ class Celulas(SearchDomain):
         right = (pos[0] + 1, pos[1])
         # UP
         if not self.mapa.is_blocked(up) and up != self.last_pos:
-            actlist.append(up)
+            actlist.append('w')
         # DOWN
         if not self.mapa.is_blocked(down) and down != self.last_pos:
-            actlist.append(down)
+            actlist.append('s')
         # LEFT
         if not self.mapa.is_blocked(left) and left != self.last_pos:
-            actlist.append(left)
+            actlist.append('a')
         # RIGHT
         if not self.mapa.is_blocked(right) and right != self.last_pos:
-            actlist.append(right)
+            actlist.append('d')
 
         return actlist
 
     # resultado de uma accao num estado, ou seja, o estado seguinte
-    def result(self, position, move):
-        return move
+    def result(self, pos, move):
+        if move == 'w':
+            mv = (pos[0], pos[1] - 1)
+        elif move == 's':
+            mv = (pos[0], pos[1] + 1)
+        elif move == 'a':
+            mv = (pos[0] - 1, pos[1])
+        elif move == 'd':
+            mv = (pos[0] + 1, pos[1])
+        return mv
 
     def cost(self, state, action):
         return 1
