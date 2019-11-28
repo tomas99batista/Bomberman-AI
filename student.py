@@ -21,7 +21,7 @@ class Agent:
         self.logger = logging.getLogger("Bomberman: ")
         self.mapa = mapa
         self.state = None
-        self.actual_pos = [1, 1]
+        self.actual_pos = None
         self.walls = None
         self.powerups = None
         self.bonus = None
@@ -154,21 +154,21 @@ class Agent:
         # x S x S x 
         # if (NE & NW & SE & SW):
         #   then its case 2
-        esquerda = False
-        direita = False
-        cima = False
-        baixo = False
+        # esquerda = False
+        # direita = False
+        # cima = False
+        # baixo = False
         
-        x_1, y_1 = self.enemy_place
-        x_2, y_2 = self.bomb_place
-        if x_2 < x_1:
-            esquerda = True
-        elif x_2 > x_1:
-            direita = True
-        elif y_2 < y_1:
-            cima = True
-        elif y_2 > y_1:
-            baixo = True
+        # x_1, y_1 = self.enemy_place
+        # x_2, y_2 = self.bomb_place
+        # if x_2 < x_1:
+        #     esquerda = True
+        # elif x_2 > x_1:
+        #     direita = True
+        # elif y_2 < y_1:
+        #     cima = True
+        # elif y_2 > y_1:
+        #     baixo = True
         hide_spots = []
         
         # Case 1
@@ -185,22 +185,22 @@ class Agent:
             # If NW not blocked append, then select the lowest
             if not Map.is_blocked(self.mapa, [self.bomb_place[0] - 1, self.bomb_place[1] - 1]):
                 fuga = (self.bomb_place[0] - 1, self.bomb_place[1] - 1)
-                if fuga != self.enemy_place and (not baixo) and (not esquerda) :
+                if fuga != self.enemy_place:
                     hide_spots.append(fuga)
             # If SW not blocked append, then select the lowest
             if not Map.is_blocked(self.mapa, [self.bomb_place[0] - 1, self.bomb_place[1] + 1]):
                 fuga = (self.bomb_place[0] - 1, self.bomb_place[1] + 1)
-                if fuga != self.enemy_place and (not cima) and (not esquerda):
+                if fuga != self.enemy_place:
                     hide_spots.append(fuga)
             # If NE not blocked append, then select the lowest
             if not Map.is_blocked(self.mapa, [self.bomb_place[0] + 1, self.bomb_place[1] - 1]):
                 fuga = (self.bomb_place[0] + 1, self.bomb_place[1] - 1)
-                if fuga != self.enemy_place and (not direita) and (not baixo):
+                if fuga != self.enemy_place:
                     hide_spots.append(fuga)
             # If SE not blocked append, then select the lowest
             if not Map.is_blocked(self.mapa, [self.bomb_place[0] + 1, self.bomb_place[1] + 1]):
                 fuga = (self.bomb_place[0] + 1, self.bomb_place[1] + 1)
-                if fuga != self.enemy_place and (not direita) and (not cima):
+                if fuga != self.enemy_place:
                     hide_spots.append(fuga)     
             if hide_spots != []:
                 # Este return min n faz mto sentido pq eles têm todos a mm hipotenusa, 
@@ -219,42 +219,42 @@ class Agent:
             # 1
             if not (Map.is_blocked(self.mapa, [ self.bomb_place[0] - 1, self.bomb_place[1] - 2 ])):
                 fuga = (self.bomb_place[0] - 1, self.bomb_place[1] -2 )
-                if fuga != self.enemy_place and (not cima):  
+                if fuga != self.enemy_place:
                     hide_spots.append(fuga)                  
             # 2
             if not (Map.is_blocked(self.mapa, [ self.bomb_place[0] + 1 , self.bomb_place[1] - 2 ])):
                 fuga = (self.bomb_place[0] + 1 , self.bomb_place[1] - 2 )
-                if fuga != self.enemy_place and (not cima):
+                if fuga != self.enemy_place:
                     hide_spots.append(fuga)                    
             # 3
             if not (Map.is_blocked(self.mapa, [ self.bomb_place[0] + 2, self.bomb_place[1] - 1 ])):
                 fuga = (self.bomb_place[0] + 2, self.bomb_place[1] - 1)
-                if fuga != self.enemy_place and (not esquerda):
+                if fuga != self.enemy_place:
                     hide_spots.append(fuga)
             # 4
             if not (Map.is_blocked(self.mapa, [ self.bomb_place[0] + 2 , self.bomb_place[1] + 1 ])):
                 fuga = (self.bomb_place[0] + 2 , self.bomb_place[1] + 1 )
-                if fuga != self.enemy_place and (not esquerda):
+                if fuga != self.enemy_place:
                     hide_spots.append(fuga)
             # 5
             if not (Map.is_blocked(self.mapa, [ self.bomb_place[0] + 1, self.bomb_place[1] + 2 ])):
                 fuga = ( self.bomb_place[0] + 1, self.bomb_place[1] + 2)
-                if fuga != self.enemy_place and (not baixo):
+                if fuga != self.enemy_place:
                     hide_spots.append(fuga)
             # 6
             if not (Map.is_blocked(self.mapa, [ self.bomb_place[0] - 1, self.bomb_place[1] + 2 ])):
                 fuga = ( self.bomb_place[0] - 1, self.bomb_place[1] + 2)
-                if fuga != self.enemy_place and (not baixo):
+                if fuga != self.enemy_place:
                     hide_spots.append(fuga)
             # 7
             if not (Map.is_blocked(self.mapa, [ self.bomb_place[0] - 2, self.bomb_place[1] + 1 ])):
                 fuga = ( self.bomb_place[0] - 2, self.bomb_place[1] + 1 )
-                if fuga != self.enemy_place and (not direita):
+                if fuga != self.enemy_place:
                     hide_spots.append(fuga)
             # 8
             if not (Map.is_blocked(self.mapa, [ self.bomb_place[0] - 2, self.bomb_place[1] - 1 ])):
                 fuga = (self.bomb_place[0] - 2, self.bomb_place[1] - 1 )
-                if fuga != self.enemy_place and (not direita):
+                if fuga != self.enemy_place:
                     hide_spots.append(fuga)
             if hide_spots != []:
                 # Este return min n faz mto sentido pq eles têm todos a mm hipotenusa, 
@@ -271,7 +271,7 @@ class Agent:
     def exec(self):
         # Se tem teclas em espera para executar
         if self.action_keys != []:
-            self.logger.info(f'ACTION_KES: {self.action_keys}')
+            # self.logger.info(f'ACTION_KEYS: {self.action_keys}')
             key = self.action_keys.pop(0)
             return key
         # Se nao calcula teclas
@@ -288,8 +288,8 @@ class Agent:
                     # Aqui não vai poder ficar a dormir, vai ter de ver se não tem nenhum inimigo em direção a ele
                     # self.move = self.dodge_enemies()
                     self.logger.info(f'tou no safe_spot: {self.actual_pos}')
-                    return "" # futuramente por A, qdo ele tiver o detonator
-            # --- Não há --
+                    return "A" # futuramente por A, qdo ele tiver o detonator
+            # --- Não há bombas no mapa--
             else:            
                 # Se houver powerups vai apanhar
                 if False: #self.powerups != []:
@@ -320,31 +320,25 @@ class Agent:
                 self.logger.info(f'bomb_drop: {self.actual_pos}')
                 return 'B'
 
-            if self.exit != []:
-                saida = (self.exit[0], self.exit[1])
-                if self.enemies == []:
-                    self.move = saida
-                    self.logger.info(f'vai saida: {self.move} || {saida}')
-
-            self.logger.info(f'Move: {self.move}')
+            # self.logger.info(f'Move: {self.move}')
             celula = Celulas(self.mapa, self.last_pos)        
             problem = SearchProblem(celula, self.actual_pos, self.move)  # Move é o sitio a ir
             tree = SearchTree(problem, "astar")
             best_path = tree.search()  # Best_path = [ (x,y), (x-1,y)] AKA lista de (x,y) a seguir, perceber qdo desde e sobe, etc
-            self.logger.info(f'Best_path: {best_path}')
+            # self.logger.info(f'Best_path: {best_path}')
             if best_path == []:
                 self.logger.info("N TENHO PARA ONDE IR")
             lp = (self.actual_pos[0], self.actual_pos[1])
             for mv in best_path:
                 x, y = mv
                 a, b = lp
-                if (x,y) == (a - 1, b):
-                    self.action_keys.append("w")
-                if (x,y) == (a+ 1, b):
-                    self.action_keys.append("s")
                 if (x,y) == (a, b - 1):
-                    self.action_keys.append("a")
+                    self.action_keys.append("w")
                 if (x,y) == (a, b + 1):
+                    self.action_keys.append("s")
+                if (x,y) == (a - 1 , b):
+                    self.action_keys.append("a")
+                if (x,y) == (a + 1, b):
                     self.action_keys.append("d")
                 lp = mv
             return ''
