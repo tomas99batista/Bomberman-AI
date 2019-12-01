@@ -21,7 +21,7 @@ class Agent:
         self.logger = logging.getLogger("Bomberman: ")
         self.mapa = mapa
         self.state = None
-        self.actual_pos = None
+        self.actual_pos = self.mapa._bomberman_spawn
         self.walls = None
         self.powerups = None
         self.bonus = None
@@ -47,6 +47,7 @@ class Agent:
         self.x, self.y = self.actual_pos
         self.walls = state["walls"]
         self.enemies = state["enemies"]
+        self.enemies_spots = [(enemy.get('pos')[0], enemy.get('pos')[1]) for enemy in self.enemies]
         self.powerups = state["powerups"]
         self.bonus = state["bonus"]
         self.exit = state["exit"]
@@ -55,47 +56,54 @@ class Agent:
         
     # Search for enemies
     def place_bomb_enemy(self):
+        # Perceber onde tem inimigos no range da bomba
         min_hypot = sys.maxsize
         best_spot = (1,1)
-        # This lambda-function-list-comprehension-super-pythonic way will give the enemy  (the nearest) to KILL
+        # This lambda-function-list-comprehension-super-pythonic way will give the enemy (the nearest) to KILL
         enemy = min([(enemy.get('pos')[0], enemy.get('pos')[1]) for enemy in self.enemies], key=lambda enemy: math.hypot(self.actual_pos[0] - enemy[0], self.actual_pos[1] - enemy[1]))
-        # if math.hypot(self.actual_pos[0] - enemy[0], self.actual_pos[1] - enemy[1]) > (self.mapa.size[0]/2) :
-            # print('enemies longe, vai ate ao meio')
-            # return (25,15)
-        self.enemy_place = enemy
-        # Now, for that enemy, look for the closes spot 2 blocks away from the enemy [top, down, left, right]
-        # If the spot UP the enemy it's free
-        up =    True if enemy[1] + 2 != 0 and not Map.is_blocked(self.mapa, [enemy[0]     , enemy[1] - 2]) else False
-        # If the spot DOWN the enemy it's free
-        down =  True if enemy[1] - 2 != 0 and not Map.is_blocked(self.mapa, [enemy[0]     , enemy[1] + 2]) else False
-        # If the spot LEFT of the enemy it's free
-        left =  True if enemy[0] - 2 != 0 and not Map.is_blocked(self.mapa, [enemy[0] - 2 , enemy[1]])     else False
-        # If the spot RIGHT of the enemy it's free
-        right = True if enemy[0] + 2 != 0 and not Map.is_blocked(self.mapa, [enemy[0] + 2 , enemy[1]])     else False
-        # If UP has the lowest hyp
-        up_hyp = math.hypot(self.actual_pos[0] - enemy[0], self.actual_pos[1] - (enemy[1] - 2))
-        if up and up_hyp < min_hypot:
-            min_hypot = up_hyp
-            best_spot = (enemy[0], enemy[1] - 2)
-        # If DOWN has the lowest hyp
-        down_hyp = math.hypot(self.actual_pos[0] - enemy[0], self.actual_pos[1] - (enemy[1] + 2))
-        if down and down_hyp < min_hypot:
-            min_hypot = down_hyp
-            best_spot = (enemy[0], enemy[1] + 2)
-        # If LEFT has the lowest hyp
-        left_hyp = math.hypot(self.actual_pos[0] - (enemy[0] - 2), self.actual_pos[1] - enemy[1])
-        if left and left_hyp < min_hypot:
-            min_hypot = left_hyp
-            best_spot = (enemy[0] - 2, enemy[1])
-        # If RIGHT has the lowest hyp
-        right_hyp = math.hypot(self.actual_pos[0] - (enemy[0] + 2), self.actual_pos[1]  + enemy[1])
-        if right and right_hyp < min_hypot:
-            min_hypot = right_hyp
-            best_spot = (enemy[0] + 2, enemy[1])       
-        logger.debug(f'Nearest wall: {enemy}')
-        logger.debug(f'Best spot: {best_spot}')
-        self.bomb_place = best_spot
-        return best_spot             
+        if math.hypot(self.actual_pos[0] - enemy[0], self.actual_pos[1] - enemy[1]) > (self.mapa.size[0]/2) :
+            print('enemies longe, vai partir paredes')
+            return self.place_bomb_wall()
+        else:
+            print (self.mapa.size[0] - 2, self.mapa.size[1] - 2)
+            self.enemy_place = enemy
+            # Now, for that enemy, look for the closes spot 2 blocks away from the enemy [top, down, left, right]
+            # If the spot UP the enemy it's free
+            up =    True if enemy[1] + 2 != 0 and not Map.is_blocked(self.mapa, [enemy[0]     , enemy[1] - 2]) else False
+            # If the spot DOWN the enemy it's free
+            down =  True if enemy[1] - 2 != 0 and not Map.is_blocked(self.mapa, [enemy[0]     , enemy[1] + 2]) else False
+            # If the spot LEFT of the enemy it's free
+            left =  True if enemy[0] - 2 != 0 and not Map.is_blocked(self.mapa, [enemy[0] - 2 , enemy[1]])     else False
+            # If the spot RIGHT of the enemy it's free
+            right = True if enemy[0] + 2 != 0 and not Map.is_blocked(self.mapa, [enemy[0] + 2 , enemy[1]])     else False
+            # If UP has the lowest hyp
+            up_hyp = math.hypot(self.actual_pos[0] - enemy[0], self.actual_pos[1] - (enemy[1] - 2))
+            if up and up_hyp < min_hypot:
+                min_hypot = up_hyp
+                if (enemy[0], enemy[1] - 2) not in self.enemies_spots:
+                    best_spot = (enemy[0], enemy[1] - 2)
+            # If DOWN has the lowest hyp
+            down_hyp = math.hypot(self.actual_pos[0] - enemy[0], self.actual_pos[1] - (enemy[1] + 2))
+            if down and down_hyp < min_hypot:
+                min_hypot = down_hyp
+                if (enemy[0], enemy[1] + 2) not in self.enemies_spots:
+                    best_spot = (enemy[0], enemy[1] + 2)
+            # If LEFT has the lowest hyp
+            left_hyp = math.hypot(self.actual_pos[0] - (enemy[0] - 2), self.actual_pos[1] - enemy[1])
+            if left and left_hyp < min_hypot:
+                min_hypot = left_hyp
+                if (enemy[0] - 2, enemy[1]) not in self.enemies_spots:
+                    best_spot = (enemy[0] - 2, enemy[1])
+            # If RIGHT has the lowest hyp
+            right_hyp = math.hypot(self.actual_pos[0] - (enemy[0] + 2), self.actual_pos[1]  + enemy[1])
+            if right and right_hyp < min_hypot:
+                min_hypot = right_hyp
+                if (enemy[0] + 2, enemy[1])  not in self.enemies_spots:
+                    best_spot = (enemy[0] + 2, enemy[1])       
+            logger.debug(f'Nearest wall: {enemy}')
+            logger.debug(f'Best spot: {best_spot}')
+            self.bomb_place = best_spot
+            return best_spot             
 
     # Search for the closest wall
     def place_bomb_wall(self):
@@ -154,6 +162,8 @@ class Agent:
         # x S x S x 
         # if (NE & NW & SE & SW):
         #   then its case 2
+        
+        # ----------------------------
         # esquerda = False
         # direita = False
         # cima = False
@@ -169,8 +179,9 @@ class Agent:
         #     cima = True
         # elif y_2 > y_1:
         #     baixo = True
-        hide_spots = []
         
+        hide_spots = []
+        self.enemies_spots = [(enemy.get('pos')[0], enemy.get('pos')[1]) for enemy in self.enemies]
         # Case 1
         c1 = (Map.is_blocked(self.mapa, [self.bomb_place[0], self.bomb_place[1] - 1]) and Map.is_blocked(self.mapa, [self.bomb_place[0], self.bomb_place[1] + 1])) or \
                 (Map.is_blocked(self.mapa, [self.bomb_place[0]  - 1, self.bomb_place[1]]) and Map.is_blocked(self.mapa, [self.bomb_place[0] + 1, self.bomb_place[1]]))
@@ -185,22 +196,22 @@ class Agent:
             # If NW not blocked append, then select the lowest
             if not Map.is_blocked(self.mapa, [self.bomb_place[0] - 1, self.bomb_place[1] - 1]):
                 fuga = (self.bomb_place[0] - 1, self.bomb_place[1] - 1)
-                if fuga != self.enemy_place:
+                if fuga not in self.enemies_spots:# and (not baixo) and (not esquerda) :
                     hide_spots.append(fuga)
             # If SW not blocked append, then select the lowest
             if not Map.is_blocked(self.mapa, [self.bomb_place[0] - 1, self.bomb_place[1] + 1]):
                 fuga = (self.bomb_place[0] - 1, self.bomb_place[1] + 1)
-                if fuga != self.enemy_place:
+                if fuga not in self.enemies_spots:# and (not cima) and (not esquerda):
                     hide_spots.append(fuga)
             # If NE not blocked append, then select the lowest
             if not Map.is_blocked(self.mapa, [self.bomb_place[0] + 1, self.bomb_place[1] - 1]):
                 fuga = (self.bomb_place[0] + 1, self.bomb_place[1] - 1)
-                if fuga != self.enemy_place:
+                if fuga not in self.enemies_spots:# and (not direita) and (not baixo):
                     hide_spots.append(fuga)
             # If SE not blocked append, then select the lowest
             if not Map.is_blocked(self.mapa, [self.bomb_place[0] + 1, self.bomb_place[1] + 1]):
                 fuga = (self.bomb_place[0] + 1, self.bomb_place[1] + 1)
-                if fuga != self.enemy_place:
+                if fuga not in self.enemies_spots:# and (not direita) and (not cima):
                     hide_spots.append(fuga)     
             if hide_spots != []:
                 # Este return min n faz mto sentido pq eles têm todos a mm hipotenusa, 
@@ -219,49 +230,49 @@ class Agent:
             # 1
             if not (Map.is_blocked(self.mapa, [ self.bomb_place[0] - 1, self.bomb_place[1] - 2 ])):
                 fuga = (self.bomb_place[0] - 1, self.bomb_place[1] -2 )
-                if fuga != self.enemy_place:
+                if fuga not in self.enemies_spots:# and (not cima):  
                     hide_spots.append(fuga)                  
             # 2
             if not (Map.is_blocked(self.mapa, [ self.bomb_place[0] + 1 , self.bomb_place[1] - 2 ])):
                 fuga = (self.bomb_place[0] + 1 , self.bomb_place[1] - 2 )
-                if fuga != self.enemy_place:
+                if fuga not in self.enemies_spots:# and (not cima):
                     hide_spots.append(fuga)                    
             # 3
             if not (Map.is_blocked(self.mapa, [ self.bomb_place[0] + 2, self.bomb_place[1] - 1 ])):
                 fuga = (self.bomb_place[0] + 2, self.bomb_place[1] - 1)
-                if fuga != self.enemy_place:
+                if fuga not in self.enemies_spots:# and (not esquerda):
                     hide_spots.append(fuga)
             # 4
             if not (Map.is_blocked(self.mapa, [ self.bomb_place[0] + 2 , self.bomb_place[1] + 1 ])):
                 fuga = (self.bomb_place[0] + 2 , self.bomb_place[1] + 1 )
-                if fuga != self.enemy_place:
+                if fuga not in self.enemies_spots:# and (not esquerda):
                     hide_spots.append(fuga)
             # 5
             if not (Map.is_blocked(self.mapa, [ self.bomb_place[0] + 1, self.bomb_place[1] + 2 ])):
                 fuga = ( self.bomb_place[0] + 1, self.bomb_place[1] + 2)
-                if fuga != self.enemy_place:
+                if fuga not in self.enemies_spots:# and (not baixo):
                     hide_spots.append(fuga)
             # 6
             if not (Map.is_blocked(self.mapa, [ self.bomb_place[0] - 1, self.bomb_place[1] + 2 ])):
                 fuga = ( self.bomb_place[0] - 1, self.bomb_place[1] + 2)
-                if fuga != self.enemy_place:
+                if fuga not in self.enemies_spots:# and (not baixo):
                     hide_spots.append(fuga)
             # 7
             if not (Map.is_blocked(self.mapa, [ self.bomb_place[0] - 2, self.bomb_place[1] + 1 ])):
                 fuga = ( self.bomb_place[0] - 2, self.bomb_place[1] + 1 )
-                if fuga != self.enemy_place:
+                if fuga not in self.enemies_spots:# and (not direita):
                     hide_spots.append(fuga)
             # 8
             if not (Map.is_blocked(self.mapa, [ self.bomb_place[0] - 2, self.bomb_place[1] - 1 ])):
                 fuga = (self.bomb_place[0] - 2, self.bomb_place[1] - 1 )
-                if fuga != self.enemy_place:
+                if fuga not in self.enemies_spots:# and (not direita):
                     hide_spots.append(fuga)
             if hide_spots != []:
                 # Este return min n faz mto sentido pq eles têm todos a mm hipotenusa, 
                 # oq importa é se no caminho eles têm paredes pelo meio oq implica q eles demorem + mas ok
                 spot = min([(wall[0], wall[1]) for wall in hide_spots], key=lambda wall: math.hypot(self.bomb_place[0] - wall[0], self.bomb_place[1] - wall[1]))                  
                 self.safe_spot = spot
-                return spot           
+                return spot            #print('c2 vazio')
             
         else:
             #print('c1 e c2 ao mm tempo')
