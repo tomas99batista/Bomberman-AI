@@ -113,6 +113,7 @@ class Agent:
 	# Find a safe spot not in the way of the bomb explosion
 	def hide_spot(self):
 		hide_spots = []
+		
 		# Case 1
 		c1 = (self.mapa.is_blocked((self.bomb_place[0], self.bomb_place[1] - 1)) and self.mapa.is_blocked((self.bomb_place[0], self.bomb_place[1] + 1))) or \
 				(self.mapa.is_blocked((self.bomb_place[0]  - 1, self.bomb_place[1])) and self.mapa.is_blocked((self.bomb_place[0] + 1, self.bomb_place[1])))
@@ -130,22 +131,22 @@ class Agent:
 		# If NW not blocked append, then select the lowest
 		if not self.mapa.is_blocked((self.bomb_place[0] - 1, self.bomb_place[1] -  1)):
 			fuga = (self.bomb_place[0] - 1, self.bomb_place[1] - 1)
-			if fuga not in self.enemies_spots:# and (not baixo) and (not esquerda) :
+			if fuga not in self.enemies_spots:
 				hide_spots.append(fuga)
 		# If SW not blocked append, then select the lowest
 		if not self.mapa.is_blocked((self.bomb_place[0] - 1, self.bomb_place[1] + 1 )):
 			fuga = (self.bomb_place[0] - 1, self.bomb_place[1] + 1)
-			if fuga not in self.enemies_spots:# and (not cima) and (not esquerda):
+			if fuga not in self.enemies_spots:
 				hide_spots.append(fuga)
 		# If NE not blocked append, then select the lowest
 		if not self.mapa.is_blocked((self.bomb_place[0] + 1, self.bomb_place[1] - 1)):
 			fuga = (self.bomb_place[0] + 1, self.bomb_place[1] - 1)
-			if fuga not in self.enemies_spots:# and (not direita) and (not baixo):
+			if fuga not in self.enemies_spots:
 				hide_spots.append(fuga)
 		# If SE not blocked append, then select the lowest
 		if not self.mapa.is_blocked((self.bomb_place[0] + 1, self.bomb_place[1] + 1)):
 			fuga = (self.bomb_place[0] + 1, self.bomb_place[1] + 1)
-			if fuga not in self.enemies_spots:# and (not direita) and (not cima):
+			if fuga not in self.enemies_spots:
 				hide_spots.append(fuga)     
 		# # CASE 2:
 		# 	# Check for 8 spots to run
@@ -157,42 +158,42 @@ class Agent:
 		# 1
 		if not (self.mapa.is_blocked(( self.bomb_place[0] - 1, self.bomb_place[1] - 2 ))):
 			fuga = (self.bomb_place[0] - 1, self.bomb_place[1] -2 )
-			if fuga not in self.enemies_spots:# and (not cima):  
+			if fuga not in self.enemies_spots:
 				hide_spots.append(fuga)                  
 		# 2
 		if not (self.mapa.is_blocked(( self.bomb_place[0] + 1 , self.bomb_place[1] - 2 ))):
 			fuga = (self.bomb_place[0] + 1 , self.bomb_place[1] - 2 )
-			if fuga not in self.enemies_spots:# and (not cima):
+			if fuga not in self.enemies_spots:
 				hide_spots.append(fuga)                    
 		# 3
 		if not (self.mapa.is_blocked(( self.bomb_place[0] + 2, self.bomb_place[1] - 1 ))):
 			fuga = (self.bomb_place[0] + 2, self.bomb_place[1] - 1)
-			if fuga not in self.enemies_spots:# and (not esquerda):
+			if fuga not in self.enemies_spots:
 				hide_spots.append(fuga)
 		# 4
 		if not (self.mapa.is_blocked(( self.bomb_place[0] + 2 , self.bomb_place[1] + 1 ))):
 			fuga = (self.bomb_place[0] + 2 , self.bomb_place[1] + 1 )
-			if fuga not in self.enemies_spots:# and (not esquerda):
+			if fuga not in self.enemies_spots:
 				hide_spots.append(fuga)
 		# 5
 		if not (self.mapa.is_blocked(( self.bomb_place[0] + 1, self.bomb_place[1] + 2 ))):
 			fuga = ( self.bomb_place[0] + 1, self.bomb_place[1] + 2)
-			if fuga not in self.enemies_spots:# and (not baixo):
+			if fuga not in self.enemies_spots:
 				hide_spots.append(fuga)
 		# 6
 		if not (self.mapa.is_blocked(( self.bomb_place[0] - 1, self.bomb_place[1] + 2 ))):
 			fuga = ( self.bomb_place[0] - 1, self.bomb_place[1] + 2)
-			if fuga not in self.enemies_spots:# and (not baixo):
+			if fuga not in self.enemies_spots:
 				hide_spots.append(fuga)
 		# 7
 		if not (self.mapa.is_blocked(( self.bomb_place[0] - 2, self.bomb_place[1] + 1 ))):
 			fuga = ( self.bomb_place[0] - 2, self.bomb_place[1] + 1 )
-			if fuga not in self.enemies_spots:# and (not direita):
+			if fuga not in self.enemies_spots:
 				hide_spots.append(fuga)
 		# 8
 		if not (self.mapa.is_blocked(( self.bomb_place[0] - 2, self.bomb_place[1] - 1 ))):
 			fuga = (self.bomb_place[0] - 2, self.bomb_place[1] - 1 )
-			if fuga not in self.enemies_spots:# and (not direita):
+			if fuga not in self.enemies_spots:
 				hide_spots.append(fuga)
 		if hide_spots != []:
 			# Este return min n faz mto sentido pq eles têm todos a mm hipotenusa, 
