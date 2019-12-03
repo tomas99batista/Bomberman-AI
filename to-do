@@ -21,5 +21,3 @@
 - Se o inimigo está numa zona de 1x3 (um tunel), o bombas n consegue ir la
 
 - C adiçao de antecipaçao dos inimigos para o safe_spot ele as x n tem para onde ir e entao retorna um None, ver oq fazer
-
-- Se os enemies tao nos limites de coluna/fila ele tem de por a bomba diretamente la e nao estar a atirar bombas a toa
