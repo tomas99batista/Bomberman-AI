@@ -116,7 +116,7 @@ class Agent:
 	# Find a safe spot not in the way of the bomb explosion
 	def hide_spot(self):
 		hide_spots = []
-		
+		# TODO: Ainda ha um case 3 q é qdo ele se mete num buraco. ai usar for para procurar o safe spot mais perto
 		# Case 1
 		c1 = (self.mapa.is_blocked((self.bomb_place[0], self.bomb_place[1] - 1)) and self.mapa.is_blocked((self.bomb_place[0], self.bomb_place[1] + 1))) or \
 				(self.mapa.is_blocked((self.bomb_place[0]  - 1, self.bomb_place[1])) and self.mapa.is_blocked((self.bomb_place[0] + 1, self.bomb_place[1])))
