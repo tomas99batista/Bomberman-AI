@@ -6,9 +6,9 @@ import os
 
 import requests
 
-from characters import Balloom, Bomberman, Character, Doll, Minvo, Oneal, Kondoria, Ovapi, Pass
+from characters import Balloom, Bomberman, Character, Doll, Minvo, Oneal, Kondoria, Ovapi, Pass, distance
 from consts import Powerups
-from mapa import Map, Tiles
+from mapa import Map, Tiles, VITAL_SPACE
 
 logger = logging.getLogger("Game")
 logger.setLevel(logging.DEBUG)
@@ -16,7 +16,7 @@ logger.setLevel(logging.DEBUG)
 LIVES = 3
 INITIAL_SCORE = 0
 TIMEOUT = 3000
-GAME_SPEED = 10
+GAME_SPEED = 30
 MIN_BOMB_RADIUS = 3
 MAP_SIZE = (51, 31)
 
@@ -217,6 +217,7 @@ class Game:
                     self._lastkeypress == "B"
                     and len(self._bombs)
                     < self._bomberman.powers.count(Powerups.Bombs) + 1
+                    and not self.map.is_blocked(self._bomberman.pos)
                 ):
                     self._bombs.append(
                         Bomb(
@@ -257,6 +258,10 @@ class Game:
         if self._bomberman.lives > 0:
             logger.debug("RESPAWN")
             self._bomberman.respawn()
+            for e in self._enemies:
+                if distance(self._bomberman.pos, e.pos) < VITAL_SPACE:
+                    logger.debug("respawn camper")
+                    e.respawn()
             self._bombs = []
         else:
             self.stop()
