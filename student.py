@@ -146,7 +146,6 @@ class Agent:
 				self.mapa.is_blocked((self.bomb_place[0] + 1, self.bomb_place[1] - 1)) and \
 				self.mapa.is_blocked((self.bomb_place[0] + 1, self.bomb_place[1] + 1))	
 
-		print('c1', c1, 'c2', c2)
 		# * CASE 1 e CASE 2 
 		# # CASE 1: 
 		# 1 Z 2         S = Safe spot   (x +- 1, y +- 1)
@@ -205,25 +204,21 @@ class Agent:
 			if not (self.mapa.is_blocked(( self.bomb_place[0] + 2 , self.bomb_place[1] + 1 ))) \
 					and (self.bomb_place[0] + 2 , self.bomb_place[1] + 1 ) not in self.enemies_spots \
 					and (d and b):
-				print(5)
 				hide_spots.append((self.bomb_place[0] + 2 , self.bomb_place[1] + 1 ))
 			# 6
 			if not (self.mapa.is_blocked(( self.bomb_place[0] + 1, self.bomb_place[1] + 2 ))) \
 					and (self.bomb_place[0] + 1, self.bomb_place[1] + 2) not in self.enemies_spots \
 					and (d and b):
-				print(6)
 				hide_spots.append((self.bomb_place[0] + 1, self.bomb_place[1] + 2))
 			# 7
 			if not (self.mapa.is_blocked(( self.bomb_place[0] - 1, self.bomb_place[1] + 2 ))) \
 					and (self.bomb_place[0] - 1, self.bomb_place[1] + 2) not in self.enemies_spots \
 					and (e and b):
-				print(7)
 				hide_spots.append((self.bomb_place[0] - 1, self.bomb_place[1] + 2))
 			# 8
 			if not (self.mapa.is_blocked(( self.bomb_place[0] - 2, self.bomb_place[1] + 1 ))) \
 					and (self.bomb_place[0] - 2, self.bomb_place[1] + 1 ) not in self.enemies_spots \
 					and (e and b):
-				print(8)
 				hide_spots.append((self.bomb_place[0] - 2, self.bomb_place[1] + 1 ))
 
 		# * CASE 1 AND CASE 2
@@ -293,7 +288,7 @@ class Agent:
 			if tuple(self.actual_pos) == tuple(self.safe_spot):
 				# Espera que a bomba rebente
 				self.logger.info(f'At the Safe Spot: {self.actual_pos}')
-				print('tou', self.safe_spot, tuple(self.actual_pos), 'bmb', self.bomb_place)
+				# print('tou', self.safe_spot, tuple(self.actual_pos), 'bmb', self.bomb_place)
 				return "A" # futuramente por A, qdo ele tiver o detonator
 		# * --- Não há bombas no mapa ---
 		else:            
@@ -367,7 +362,7 @@ class Agent:
 				best_path = celula.AStarSearch(tuple(self.actual_pos), self.move)
 				self.wlpass = True
 			# Digerir so meia lista
-			size = int(len(best_path)/3)
+			size = int(len(best_path)/4)
 			if size < 1: size = 1
 			# Consumir meia lista
 			self.best_path = best_path [:size]
@@ -377,6 +372,7 @@ class Agent:
 		if (pos in self.mapa.walls) and self.wlpass:
 			print('\nVOU BATER NA WALL\n')
 			self.wlpass = False
+			self.best_path = []
 			self.move = self.hide_spot()
 			return 'B'
 		if pos in self.enemies_spots:
@@ -416,7 +412,6 @@ async def agent_loop(server_address="localhost:8000", agent_name="student"):
 				state = json.loads(await websocket.recv())  
 				# Para comer todas as mensagens q estao entaladas
 				while len(websocket.messages) > 0:
-					print('a')
 					state = json.loads(await websocket.recv())
 				# Para so enviar o score
 				if len(state) > 1:
@@ -426,7 +421,6 @@ async def agent_loop(server_address="localhost:8000", agent_name="student"):
 					json.dumps({"cmd": "key", "key": key})
 				)  # send key command to server - you must implement this send in the AI agent
 			except websockets.exceptions.ConnectionClosedOK:
-				#print("Server has cleanly disconnected us")
 				return
 
 
