@@ -287,7 +287,6 @@ class Agent:
 			if tuple(self.actual_pos) == tuple(self.safe_spot):
 				# Espera que a bomba rebente
 				self.logger.info(f'At the Safe Spot: {self.actual_pos}')
-				print('tou', self.safe_spot, tuple(self.actual_pos), 'bmb', self.bomb_place)
 				return "A" # futuramente por A, qdo ele tiver o detonator
 			# ! Se não estás a ir para o safe_spot, vai
 			else:
@@ -323,7 +322,7 @@ class Agent:
 						# Ativa o drop da bomba e vai para a wall
 						self.drop = True
 						self.move = self.place_bomb(1, 'wall')
-						self.logger.info(f'Destroying wall: {self.move}')
+						self.logger.info(f'Best_spot to place bomb: {self.move}')
 				# ! Se tem permissao para dropar bomba, fa-lo
 				if self.drop and tuple(self.actual_pos) == self.bomb_place:
 					self.drop = False
@@ -350,25 +349,25 @@ class Agent:
 			# ! Tem de a rebentar.
 			if not best_path:
 				# ? Se nao tem caminho vai partir walls?
-				self.move = self.place_bomb(1, 'wall')
-				# True é para o wallpass
+				print('tentando path', self.move)
 				celula = Celulas(self.mapa, self.last_pos, True, self.enemies_spots)        
 				best_path = celula.AStarSearch(tuple(self.actual_pos), self.move)
 				self.wlpass = True
 			# Digerir so meia lista
-			size = int(len(best_path)/4)
+			size = int(len(best_path)/2)
 			if size < 1: size = 1
 			# Consumir meia lista
 			self.best_path = best_path [:size]
 		# Retira a posição a seguir
-		pos = self.best_path.pop(0) if self.best_path else self.last_pos
+		
+		pos = self.best_path.pop(0) if self.best_path != [] else self.last_pos
 		
 		# ! Se ve que a posiçao é uma wall (Qdo wallpass ta ligado) dropa um B 
 		if (pos in self.mapa.walls) and self.wlpass:
 			print('\nVOU BATER NA WALL\n')
 			self.wlpass = False
 			return 'B'
-			
+
 		if pos in self.enemies_spots:
 			print('vou bater no inimigo')
 			return 'B'
