@@ -362,7 +362,7 @@ class Agent:
 				best_path = celula.AStarSearch(tuple(self.actual_pos), self.move)
 				self.wlpass = True
 			# Digerir so meia lista
-			size = int(len(best_path)/4)
+			size = int(len(best_path)/5)
 			if size < 1: size = 1
 			# Consumir meia lista
 			self.best_path = best_path [:size]
