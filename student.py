@@ -8,9 +8,9 @@ Author: tomas & flavia
 
 Copyright (c) 2019 Tomas Batista & Flavia Figueiredo
 """
-logger = logging.getLogger("Bomberman")
+#logger = logging.getLogger("Bomberman")
 logging.basicConfig(
-	level=logging.INFO,
+	level=logging.WARNING,
 	format="%(asctime)s %(name)-12s %(levelname)-8s %(message)s",
 	datefmt="%m-%d %H:%M:%S",
 )
@@ -18,7 +18,7 @@ logging.basicConfig(
 # Class Agent
 class Agent:
 	def __init__(self, mapa):
-		self.logger = logging.getLogger("Bomberman: ")
+		#self.logger = logging.getLogger("Bomberman: ")
 		self.mapa = mapa
 		self.state = None
 		self.actual_pos = self.mapa._bomberman_spawn
@@ -52,7 +52,7 @@ class Agent:
 		self.mapa.walls = state["walls"]
 		if len(state['walls']) < len(self.mapa.walls): self.wall = True
 		self.enemies = state["enemies"]
-		if state['lives'] < self.lifes: self.logger.info(f'--> Lost life {state["lives"]}')
+		#if state['lives'] < self.lifes: self.logger.info(f'--> Lost life {state["lives"]}')
 		self.enemies_spots = [(enemy.get('pos')[0], enemy.get('pos')[1]) for enemy in self.enemies]
 		self.powerups = state["powerups"]
 		self.bonus = state["bonus"]
@@ -72,10 +72,10 @@ class Agent:
 			if self.enemie_chasing != objetive[2]:
 				self.tries = 0
 			self.enemie_chasing = [(objetive[0], objetive[1]),objetive[2]]
-			self.logger.info(f'Nearest enemy: {objetive}')
+			#self.logger.info(f'Nearest enemy: {objetive}')
 		elif target == 'wall':
 			objetive = min([(wall[0], wall[1]) for wall in self.mapa.walls], key=lambda wall: math.hypot(self.actual_pos[0] - wall[0], self.actual_pos[1] - wall[1]))
-			self.logger.info(f'Nearest wall: {objetive}')
+			#self.logger.info(f'Nearest wall: {objetive}')
 		# Now, for that enemy, look for the closes spot 2 blocks away from the enemy [top, down, left, right]
 		# And see if they are not neither the border and are blocked
 		# If the spot UP the enemy it's free
@@ -275,7 +275,6 @@ class Agent:
 			self.safe_spot = spot
 			return spot
 		else:
-			print('OI?')
 			return (1,1)
 
 	# Move function
@@ -286,11 +285,10 @@ class Agent:
 			# ! Se já estás abrigado
 			if tuple(self.actual_pos) == tuple(self.safe_spot):
 				# Espera que a bomba rebente
-				self.logger.info(f'At the Safe Spot: {self.actual_pos}')
+				#self.logger.info(f'At the Safe Spot: {self.actual_pos}')
 				return "A" # futuramente por A, qdo ele tiver o detonator
 			# ! Se não estás a ir para o safe_spot, vai
-			else:
-				self.logger.info(f'Going to safe spot: {self.safe_spot}')
+			# self.logger.info(f'Going to safe spot: {self.safe_spot}')
 		# * --- Não há bombas no mapa ---
 		else:            
 			# ! Se houver powerups vai apanhar
@@ -298,7 +296,7 @@ class Agent:
 				# Vai ao powerup e da permissao de saida
 				self.move = tuple(self.powerups[0][0])
 				self.go_exit = True
-				self.logger.info(f'Picking Powerup: {self.move}')
+				#self.logger.info(f'Picking Powerup: {self.move}')
 			# ! Se não tem
 			else:
 				# ! Se tiver inimigos para matar
@@ -309,20 +307,20 @@ class Agent:
 					# Se ja e a 3a x q o tenta matar vai partir uma parede perto e volta, 
 					# OU muda de inimigo e volta a este depois
 					self.move = self.place_bomb(2, 'enemy')
-					self.logger.info(f'Killing enemy: {self.move}')
+					#self.logger.info(f'Killing enemy: {self.move}')
 				# ! Se já matou todos, vai as paredes
 				else:   
 					# ! Se já conhece a saída e já tem o powerup
 					if self.exit != [] and self.go_exit and self.enemies == []:
 						# Vai para a saida e desativa a flag go_exit
 						self.move = tuple(self.exit)
-						self.logger.info(f'Going to exit: {tuple(self.move)}')
+						#self.logger.info(f'Going to exit: {tuple(self.move)}')
 					# ! Se ainda não conhece a saida/não descobriu o powerup
 					else:
 						# Ativa o drop da bomba e vai para a wall
 						self.drop = True
 						self.move = self.place_bomb(1, 'wall')
-						self.logger.info(f'Best_spot to place bomb: {self.move}')
+						#self.logger.info(f'Best_spot to place bomb: {self.move}')
 				# ! Se tem permissao para dropar bomba, fa-lo
 				if self.drop and tuple(self.actual_pos) == self.bomb_place:
 					self.drop = False
@@ -335,9 +333,9 @@ class Agent:
 					else:
 						self.tries += 1 # Local kill tries
 						self.kill_tries += 1 # Global kill tries
-						self.logger.info(f'Bomb drop: {self.actual_pos}')
+						#self.logger.info(f'Bomb drop: {self.actual_pos}')
 						return 'B'
-		# self.logger.info(f'Move: {self.move}')
+		## self.logger.info(f'Move: {self.move}')
 		
 		# ! Se n tenho best_path calculado
 		if not self.best_path:
@@ -349,7 +347,7 @@ class Agent:
 			# ! Tem de a rebentar.
 			if not best_path:
 				# ? Se nao tem caminho vai partir walls?
-				print('tentando path', self.move)
+				self.move = self.place_bomb(2, 'wall')
 				celula = Celulas(self.mapa, self.last_pos, True, self.enemies_spots)        
 				best_path = celula.AStarSearch(tuple(self.actual_pos), self.move)
 				self.wlpass = True
@@ -363,15 +361,14 @@ class Agent:
 		pos = self.best_path.pop(0) if self.best_path != [] else self.last_pos
 		
 		# ! Se ve que a posiçao é uma wall (Qdo wallpass ta ligado) dropa um B 
-		if (pos in self.mapa.walls) and self.wlpass:
-			print('\nVOU BATER NA WALL\n')
+		if len(self.best_path) >= 1 and (self.best_path[0] in self.mapa.walls) and self.wlpass:
 			self.wlpass = False
 			return 'B'
-
+		
+		# So espere que nunca entre aqui
 		if pos in self.enemies_spots:
-			print('vou bater no inimigo')
 			return 'B'
-		#self.logger.info(f'Best_path: {self.best_path}')
+		##self.logger.info(f'Best_path: {self.best_path}')
 		
 		# ! Se a proxima posicao é a saida, volta a meter o go exit a false para o next lvl
 		if self.exit == pos: 
