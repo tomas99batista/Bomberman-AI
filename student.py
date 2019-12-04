@@ -10,7 +10,7 @@ Copyright (c) 2019 Tomas Batista & Flavia Figueiredo
 """
 logger = logging.getLogger("Bomberman")
 logging.basicConfig(
-	level=logging.WARNING,
+	level=logging.INFO,
 	format="%(asctime)s %(name)-12s %(levelname)-8s %(message)s",
 	datefmt="%m-%d %H:%M:%S",
 )
@@ -41,6 +41,7 @@ class Agent:
 		self.tries = None
 		self.enemie_chasing = None
 		self.wlpass = False
+		self.kill_tries = 0
 
 	# Update agent in each iteration
 	def update_agent(self, state):
@@ -49,7 +50,9 @@ class Agent:
 		self.actual_pos = state["bomberman"]
 		self.x, self.y = self.actual_pos
 		self.mapa.walls = state["walls"]
+		if len(state['walls']) < len(self.mapa.walls): self.wall = True
 		self.enemies = state["enemies"]
+		if state['lives'] < self.lifes: self.logger.info(f'--> Lost life {state["lives"]}')
 		self.enemies_spots = [(enemy.get('pos')[0], enemy.get('pos')[1]) for enemy in self.enemies]
 		self.powerups = state["powerups"]
 		self.bonus = state["bonus"]
@@ -66,7 +69,9 @@ class Agent:
 		# This lambda-function-list-comprehension-super-pythonic way will give the enemy (the nearest) to KILL
 		if target == 'enemy':
 			objetive = min([(enemy.get('pos')[0], enemy.get('pos')[1], enemy.get('id'))  for enemy in self.enemies], key=lambda enemy: math.hypot(self.actual_pos[0] - enemy[0], self.actual_pos[1] - enemy[1]))
-			self.enemie_chasing = ((objetive[0], objetive[1]), objetive[2])
+			if self.enemie_chasing != objetive[2]:
+				self.tries = 0
+			self.enemie_chasing = [(objetive[0], objetive[1]),objetive[2]]
 			self.logger.info(f'Nearest enemy: {objetive}')
 		elif target == 'wall':
 			objetive = min([(wall[0], wall[1]) for wall in self.mapa.walls], key=lambda wall: math.hypot(self.actual_pos[0] - wall[0], self.actual_pos[1] - wall[1]))
@@ -107,34 +112,25 @@ class Agent:
 				best_spot = (objetive[0] - distance, objetive[1])
 		self.bomb_place = best_spot
 		return best_spot
-		
-		# TODO: isto esta a funcionar, contudo, nao posso medir a distancia aos spots pela
-		# hipotenusa pq essa é igual para todas, oq preciso de medir é o caminho para la,
-		# ou seja, qtos passos vai ter o meu caminho para la, pq pelo caminh posso apanhar coisas
+		# TODO: isto esta a funcionar, contudo, nao posso escolher spots bloqueados
 
 	# Find a safe spot not in the way of the bomb explosion
 	def hide_spot(self):
 		hide_spots = []
-		# TODO: Ainda ha um case 3 q é qdo ele se mete num buraco. ai usar for para procurar o safe spot mais perto
 		e_x, e_y = self.enemie_chasing[0]
 		b_x, b_y = self.bomb_place
 		# Se tem inimigos, poe a bomba em sitios opostos onde eles se encontram
 		# Acima/Abaixo da bomba, Esquerda/Direita da bomba		
 		# * CIMA BAIXO
 		# Se a bomba esta abaixo do inimigo, nao te defendas para cima
-		# ? c = False if b_y > e_y and self.enemies != [] else True
-		c = True
+		c = False if b_y > e_y and self.enemies != [] else True
 		# Se a bomba esta acima do inimigo, nao te defendas para baixo
-		# ? b = False if b_y < e_y and self.enemies != [] else True
-		b = True
+		b = False if b_y < e_y and self.enemies != [] else True
 		# * ESQUERDA DIREITA
 		# Se a bomba esta a direita do inimigo, nao te defendas para a esquerda
-		# ? e = False if b_x > e_x and self.enemies != [] else True
-		e = True
+		e = False if b_x > e_x and self.enemies != [] else True
 		# Se a bomba esta a esquerda do inimigo, nao te defendas para a direita
-		# ? d = False if b_x < e_x and self.enemies != [] else True
-		d = True
-
+		d = False if b_x < e_x and self.enemies != [] else True
 		# Case 1
 		c1 = (self.mapa.is_blocked((self.bomb_place[0], self.bomb_place[1] - 1)) and \
 				self.mapa.is_blocked((self.bomb_place[0], self.bomb_place[1] + 1))) \
@@ -145,13 +141,12 @@ class Agent:
 				self.mapa.is_blocked((self.bomb_place[0] - 1, self.bomb_place[1] + 1)) and \
 				self.mapa.is_blocked((self.bomb_place[0] + 1, self.bomb_place[1] - 1)) and \
 				self.mapa.is_blocked((self.bomb_place[0] + 1, self.bomb_place[1] + 1))	
-
 		# * CASE 1 e CASE 2 
 		# # CASE 1: 
 		# 1 Z 2         S = Safe spot   (x +- 1, y +- 1)
 		# Z B Z         Z = Possible Wall or Tile
 		# 4 Z 3         B = Bomb Spot
-		if c1 and not c2:
+		if c1:
 			# 1
 			if not self.mapa.is_blocked((self.bomb_place[0] - 1, self.bomb_place[1] -  1)) \
 					and (self.bomb_place[0] - 1, self.bomb_place[1] - 1) not in self.enemies_spots \
@@ -172,6 +167,24 @@ class Agent:
 					and (self.bomb_place[0] - 1, self.bomb_place[1] + 1) not in self.enemies_spots \
 					and (e and b):
 				hide_spots.append((self.bomb_place[0] - 1, self.bomb_place[1] + 1))
+			# Se nao encontrou hide spots com as flags ligadas
+			if hide_spots == []:
+				# 1
+				if not self.mapa.is_blocked((self.bomb_place[0] - 1, self.bomb_place[1] -  1)) \
+						and (self.bomb_place[0] - 1, self.bomb_place[1] - 1) not in self.enemies_spots:
+					hide_spots.append((self.bomb_place[0] - 1, self.bomb_place[1] - 1))
+				# 2
+				if not self.mapa.is_blocked((self.bomb_place[0] + 1, self.bomb_place[1] - 1)) \
+						and (self.bomb_place[0] + 1, self.bomb_place[1] - 1) not in self.enemies_spots:
+					hide_spots.append((self.bomb_place[0] + 1, self.bomb_place[1] - 1))
+				# 3
+				if not self.mapa.is_blocked((self.bomb_place[0] + 1, self.bomb_place[1] + 1)) \
+						and (self.bomb_place[0] + 1, self.bomb_place[1] + 1) not in self.enemies_spots:
+					hide_spots.append((self.bomb_place[0] + 1, self.bomb_place[1] + 1))     
+				# 4
+				if not self.mapa.is_blocked((self.bomb_place[0] - 1, self.bomb_place[1] + 1 )) \
+						and (self.bomb_place[0] - 1, self.bomb_place[1] + 1) not in self.enemies_spots:
+					hide_spots.append((self.bomb_place[0] - 1, self.bomb_place[1] + 1))
 		# * CASE 2:
 		# 	# Check for 8 spots to run
 		# 	# x 2 x 3 x
@@ -179,7 +192,7 @@ class Agent:
 		# 	# x x B x x
 		# 	# 8 z x z 5
 		# 	# x 7 x 6 x 
-		if c2 and not c1:
+		if c2:
 			# 1
 			if not (self.mapa.is_blocked(( self.bomb_place[0] - 2, self.bomb_place[1] - 1 ))) \
 					and (self.bomb_place[0] - 2, self.bomb_place[1] - 1 ) not in self.enemies_spots \
@@ -220,51 +233,40 @@ class Agent:
 					and (self.bomb_place[0] - 2, self.bomb_place[1] + 1 ) not in self.enemies_spots \
 					and (e and b):
 				hide_spots.append((self.bomb_place[0] - 2, self.bomb_place[1] + 1 ))
-
-		# * CASE 1 AND CASE 2
-		# TODO Quando é c1 e c2 ele esta num tunel, pelo que tera de ser feito com um for (penso eu)
-		# Por enquanto esta so a tentar pesquisar soluçoes do c2
-		if c1 and c2:
-			# 1
-			if not (self.mapa.is_blocked(( self.bomb_place[0] - 2, self.bomb_place[1] - 1 ))):
-				fuga = (self.bomb_place[0] - 2, self.bomb_place[1] - 1 )
-				if fuga not in self.enemies_spots:
-					hide_spots.append(fuga)
-			# 2
-			if not (self.mapa.is_blocked(( self.bomb_place[0] - 1, self.bomb_place[1] - 2 ))):
-				fuga = (self.bomb_place[0] - 1, self.bomb_place[1] -2 )
-				if fuga not in self.enemies_spots:
-					hide_spots.append(fuga)                  
-			# 3
-			if not (self.mapa.is_blocked(( self.bomb_place[0] + 1 , self.bomb_place[1] - 2 ))):
-				fuga = (self.bomb_place[0] + 1 , self.bomb_place[1] - 2 )
-				if fuga not in self.enemies_spots:
-					hide_spots.append(fuga)                    
-			# 4
-			if not (self.mapa.is_blocked(( self.bomb_place[0] + 2, self.bomb_place[1] - 1 ))):
-				fuga = (self.bomb_place[0] + 2, self.bomb_place[1] - 1)
-				if fuga not in self.enemies_spots:
-					hide_spots.append(fuga)
-			# 5
-			if not (self.mapa.is_blocked(( self.bomb_place[0] + 2 , self.bomb_place[1] + 1 ))):
-				fuga = (self.bomb_place[0] + 2 , self.bomb_place[1] + 1 )
-				if fuga not in self.enemies_spots:
-					hide_spots.append(fuga)
-			# 6
-			if not (self.mapa.is_blocked(( self.bomb_place[0] + 1, self.bomb_place[1] + 2 ))):
-				fuga = ( self.bomb_place[0] + 1, self.bomb_place[1] + 2)
-				if fuga not in self.enemies_spots:
-					hide_spots.append(fuga)
-			# 7
-			if not (self.mapa.is_blocked(( self.bomb_place[0] - 1, self.bomb_place[1] + 2 ))):
-				fuga = ( self.bomb_place[0] - 1, self.bomb_place[1] + 2)
-				if fuga not in self.enemies_spots:
-					hide_spots.append(fuga)
-			# 8
-			if not (self.mapa.is_blocked(( self.bomb_place[0] - 2, self.bomb_place[1] + 1 ))):
-				fuga = ( self.bomb_place[0] - 2, self.bomb_place[1] + 1 )
-				if fuga not in self.enemies_spots:
-					hide_spots.append(fuga)
+			# Se nao encontrou hide spots com as flags ligadas
+			if hide_spots == []:
+				# 1
+				if not (self.mapa.is_blocked(( self.bomb_place[0] - 2, self.bomb_place[1] - 1 ))) \
+						and (self.bomb_place[0] - 2, self.bomb_place[1] - 1 ) not in self.enemies_spots:
+					hide_spots.append((self.bomb_place[0] - 2, self.bomb_place[1] - 1 ))
+				# 2
+				if not (self.mapa.is_blocked(( self.bomb_place[0] - 1, self.bomb_place[1] - 2 ))) \
+						and (self.bomb_place[0] - 1, self.bomb_place[1] -2 ) not in self.enemies_spots:
+					hide_spots.append((self.bomb_place[0] - 1, self.bomb_place[1] -2 ))                  
+				# 3
+				if not (self.mapa.is_blocked(( self.bomb_place[0] + 1 , self.bomb_place[1] - 2 ))) \
+						and (self.bomb_place[0] + 1 , self.bomb_place[1] - 2 ) not in self.enemies_spots:
+					hide_spots.append((self.bomb_place[0] + 1 , self.bomb_place[1] - 2 ))
+				# 4
+				if not (self.mapa.is_blocked(( self.bomb_place[0] + 2, self.bomb_place[1] - 1 ))) \
+						and (self.bomb_place[0] + 2, self.bomb_place[1] - 1) not in self.enemies_spots:
+					hide_spots.append((self.bomb_place[0] + 2, self.bomb_place[1] - 1))
+				# 5
+				if not (self.mapa.is_blocked(( self.bomb_place[0] + 2 , self.bomb_place[1] + 1 ))) \
+						and (self.bomb_place[0] + 2 , self.bomb_place[1] + 1 ) not in self.enemies_spots:
+					hide_spots.append((self.bomb_place[0] + 2 , self.bomb_place[1] + 1 ))
+				# 6
+				if not (self.mapa.is_blocked(( self.bomb_place[0] + 1, self.bomb_place[1] + 2 ))) \
+						and (self.bomb_place[0] + 1, self.bomb_place[1] + 2) not in self.enemies_spots:
+					hide_spots.append((self.bomb_place[0] + 1, self.bomb_place[1] + 2))
+				# 7
+				if not (self.mapa.is_blocked(( self.bomb_place[0] - 1, self.bomb_place[1] + 2 ))) \
+						and (self.bomb_place[0] - 1, self.bomb_place[1] + 2) not in self.enemies_spots:
+					hide_spots.append((self.bomb_place[0] - 1, self.bomb_place[1] + 2))
+				# 8
+				if not (self.mapa.is_blocked(( self.bomb_place[0] - 2, self.bomb_place[1] + 1 ))) \
+						and (self.bomb_place[0] - 2, self.bomb_place[1] + 1 ) not in self.enemies_spots:
+					hide_spots.append((self.bomb_place[0] - 2, self.bomb_place[1] + 1 ))
 
 		if hide_spots != []:
 			# Este return min n faz mto sentido pq eles têm todos a mm hipotenusa, 
@@ -274,22 +276,22 @@ class Agent:
 			return spot
 		else:
 			print('OI?')
-			return None
+			return (1,1)
 
 	# Move function
 	def exec(self):
 		# * --- Há bombas no mapa ---
 		if self.bombs != []:
-			# ! Se não estás a ir para o safe_spot, vai
-			if self.move != self.safe_spot:
-				self.move = self.hide_spot()
-				self.logger.info(f'Going to safe spot: {self.move}')
+			self.move = self.hide_spot()
 			# ! Se já estás abrigado
 			if tuple(self.actual_pos) == tuple(self.safe_spot):
 				# Espera que a bomba rebente
 				self.logger.info(f'At the Safe Spot: {self.actual_pos}')
-				# print('tou', self.safe_spot, tuple(self.actual_pos), 'bmb', self.bomb_place)
+				print('tou', self.safe_spot, tuple(self.actual_pos), 'bmb', self.bomb_place)
 				return "A" # futuramente por A, qdo ele tiver o detonator
+			# ! Se não estás a ir para o safe_spot, vai
+			else:
+				self.logger.info(f'Going to safe spot: {self.safe_spot}')
 		# * --- Não há bombas no mapa ---
 		else:            
 			# ! Se houver powerups vai apanhar
@@ -301,7 +303,7 @@ class Agent:
 			# ! Se não tem
 			else:
 				# ! Se tiver inimigos para matar
-				if self.enemies != []:
+				if self.enemies != [] and self.kill_tries < 9:
 					# Ativa o drop da bomba e procura inimigo
 					self.drop = True
 					# Ver ha quanto tempo anda a tras do inimigo
@@ -312,7 +314,7 @@ class Agent:
 				# ! Se já matou todos, vai as paredes
 				else:   
 					# ! Se já conhece a saída e já tem o powerup
-					if self.exit != [] and self.go_exit:
+					if self.exit != [] and self.go_exit and self.enemies == []:
 						# Vai para a saida e desativa a flag go_exit
 						self.move = tuple(self.exit)
 						self.logger.info(f'Going to exit: {tuple(self.move)}')
@@ -325,27 +327,18 @@ class Agent:
 				# ! Se tem permissao para dropar bomba, fa-lo
 				if self.drop and tuple(self.actual_pos) == self.bomb_place:
 					self.drop = False
-					self.logger.info(f'Bomb drop: {self.actual_pos}')
-					return 'B'
-			# TODO: implementar aqui as tries
-#			if self.tries != None and self.enemies != []:
-#				# Se ja tentou mais do que 3x, vai a uma parede
-#				# Se ainda n tentou + do1 30x o enemy, vai
-#				if self.tries[1] <= 3:
-#					self.move = self.place_bomb(2, 'enemy')
-#					self.tries[1] += 1
-#				# Se ja tentou + doq 30 iteraçoes matar o inimigo e a wall ainda continua por rebentar
-#				elif self.tries[1] > 3 and self.tries[2] < 3:
-#					self.move = self.place_bomb(1, 'wall')
-#					self.tries[2] += 1
-#				elif self.tries[2] >= 3:
-#					self.move = self.place_bomb(2, 'enemy')
-#					self.tries = [self.enemie_chasing, 0, 0]
-#			elif self.tries == None and self.enemies != []:
-#				self.tries = [self.enemie_chasing, 0, 0]
-#				self.move = self.place_bomb(2, 'enemy')
-#				self.logger.info(f'Killing enemy: {self.move}')
-		self.logger.info(f'Move: {self.move}')
+					if self.tries > 3 and self.kill_tries <= 6:
+						self.wall = True
+						self.tries = 0
+					elif self.tries > 3 and self.kill_tries > 6:
+						self.wall = True
+						self.kill_tries = 0
+					else:
+						self.tries += 1 # Local kill tries
+						self.kill_tries += 1 # Global kill tries
+						self.logger.info(f'Bomb drop: {self.actual_pos}')
+						return 'B'
+		# self.logger.info(f'Move: {self.move}')
 		
 		# ! Se n tenho best_path calculado
 		if not self.best_path:
@@ -356,32 +349,36 @@ class Agent:
 			# ! Das paredes ao calcuar o best path. O que vai acontecer é que quando ele se deparar com uma parede 
 			# ! Tem de a rebentar.
 			if not best_path:
-				print('true wallpass')
+				# ? Se nao tem caminho vai partir walls?
+				self.move = self.place_bomb(1, 'wall')
 				# True é para o wallpass
 				celula = Celulas(self.mapa, self.last_pos, True, self.enemies_spots)        
 				best_path = celula.AStarSearch(tuple(self.actual_pos), self.move)
 				self.wlpass = True
 			# Digerir so meia lista
-			size = int(len(best_path)/5)
+			size = int(len(best_path)/4)
 			if size < 1: size = 1
 			# Consumir meia lista
 			self.best_path = best_path [:size]
 		# Retira a posição a seguir
 		pos = self.best_path.pop(0) if self.best_path else self.last_pos
+		
 		# ! Se ve que a posiçao é uma wall (Qdo wallpass ta ligado) dropa um B 
 		if (pos in self.mapa.walls) and self.wlpass:
 			print('\nVOU BATER NA WALL\n')
 			self.wlpass = False
-			self.best_path = []
-			self.move = self.hide_spot()
 			return 'B'
+			
 		if pos in self.enemies_spots:
 			print('vou bater no inimigo')
 			return 'B'
 		#self.logger.info(f'Best_path: {self.best_path}')
 		
 		# ! Se a proxima posicao é a saida, volta a meter o go exit a false para o next lvl
-		if self.exit == pos: self.go_exit = False
+		if self.exit == pos: 
+			self.go_exit = False
+			self.tries = 0
+			self.kill_tries = 0
 		
 		# ! Perceber que key tem de pressionar a seguir
 		if pos == (self.actual_pos[0] - 1, self.actual_pos[1]):
